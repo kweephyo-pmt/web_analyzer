@@ -76,7 +76,7 @@ const KnowledgeGraph = ({ graphData }) => {
                     {domains.map((domain) => (
                         <div key={domain.id} className="flex items-center gap-2">
                             <div
-                                className="w-4 h-4 rounded-full border-2 border-white shadow-md"
+                                className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
                                 style={{ backgroundColor: domain.color }}
                             />
                             <span className="text-sm font-medium text-slate-700">
