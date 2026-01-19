@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional
 from openai import AsyncOpenAI
-from anthropic import AsyncAnthropic
 from config import settings
 import json
 import asyncio
@@ -10,17 +9,8 @@ class AIService:
     """AI service for intelligent content analysis"""
     
     def __init__(self):
-        self.openai_client = None
-        self.anthropic_client = None
         self.groq_client = None
         self.deepseek_client = None
-        
-        # Initialize clients if API keys are available
-        if settings.OPENAI_API_KEY:
-            self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        
-        if settings.ANTHROPIC_API_KEY:
-            self.anthropic_client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
         
         # Initialize Groq (uses OpenAI-compatible API)
         if hasattr(settings, 'GROQ_API_KEY') and settings.GROQ_API_KEY:
@@ -35,47 +25,6 @@ class AIService:
                 api_key=settings.DEEPSEEK_API_KEY,
                 base_url="https://api.deepseek.com"
             )
-    
-    async def analyze_with_openai(self, prompt: str, system_prompt: str = None) -> str:
-        """Analyze content using OpenAI GPT-4o (best model)"""
-        if not self.openai_client:
-            raise ValueError("OpenAI API key not configured")
-        
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-        
-        try:
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4o",  # Best OpenAI model
-                messages=messages,
-                temperature=0.7,
-                max_tokens=4000  # Increased for better analysis
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"OpenAI API error: {str(e)}")
-            raise
-    
-    async def analyze_with_anthropic(self, prompt: str, system_prompt: str = None) -> str:
-        """Analyze content using Anthropic Claude 3.5 Sonnet (best model)"""
-        if not self.anthropic_client:
-            raise ValueError("Anthropic API key not configured")
-        
-        try:
-            response = await self.anthropic_client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # Best Claude model
-                max_tokens=8000,  # Increased for comprehensive analysis
-                system=system_prompt if system_prompt else "You are a helpful AI assistant.",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            return response.content[0].text
-        except Exception as e:
-            print(f"Anthropic API error: {str(e)}")
-            raise
     
     async def analyze_with_groq(self, prompt: str, system_prompt: str = None) -> str:
         """Analyze content using Groq (fast, free tier available)"""
@@ -92,15 +41,11 @@ class AIService:
                 model="llama-3.3-70b-versatile",  # Fast and capable model
                 messages=messages,
                 temperature=0.7,
-                max_tokens=2000  # Reduced to stay within rate limits
+                max_tokens=6000  # Groq's safe limit (max ~8000)
             )
             return response.choices[0].message.content
         except Exception as e:
             error_msg = str(e)
-            if "rate_limit" in error_msg or "413" in error_msg:
-                print(f"Groq rate limit exceeded, using fallback analysis")
-                # Return a simple fallback response
-                raise ValueError("Rate limit exceeded - using fallback")
             print(f"Groq API error: {error_msg}")
             raise
     
@@ -119,7 +64,7 @@ class AIService:
                 model="deepseek-chat",  # Main model
                 messages=messages,
                 temperature=0.7,
-                max_tokens=8000  # Higher limit for complex analysis
+                max_tokens=8000  # DeepSeek's max is 8192
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -128,48 +73,12 @@ class AIService:
     
     async def analyze_with_ai(self, prompt: str, system_prompt: str = None, prefer_anthropic: bool = True, use_deepseek: bool = False) -> str:
         """
-        Analyze content using available AI service
-        - use_deepseek=True: Use DeepSeek for complex analysis (topical maps, comparison)
-        - use_deepseek=False: Use Groq for fast analysis (knowledge graph)
+        Analyze content using Groq only
         """
-        # For complex analysis, try DeepSeek first
-        if use_deepseek and self.deepseek_client:
-            try:
-                print("Using DeepSeek for complex analysis...")
-                return await self.analyze_with_deepseek(prompt, system_prompt)
-            except Exception as e:
-                print(f"DeepSeek failed: {str(e)}")
+        if not self.groq_client:
+            raise ValueError("Groq API key not configured")
         
-        # Try Groq for fast analysis
-        if self.groq_client and not use_deepseek:
-            try:
-                return await self.analyze_with_groq(prompt, system_prompt)
-            except Exception as e:
-                print(f"Groq failed: {str(e)}")
-        
-        # Fallback to DeepSeek if Groq failed
-        if self.deepseek_client:
-            try:
-                print("Using DeepSeek as fallback...")
-                return await self.analyze_with_deepseek(prompt, system_prompt)
-            except Exception as e:
-                print(f"DeepSeek failed: {str(e)}")
-        
-        # Fallback to Anthropic
-        if self.anthropic_client:
-            try:
-                return await self.analyze_with_anthropic(prompt, system_prompt)
-            except Exception as e:
-                print(f"Anthropic failed: {str(e)}")
-        
-        # Fallback to OpenAI
-        if self.openai_client:
-            try:
-                return await self.analyze_with_openai(prompt, system_prompt)
-            except Exception as e:
-                print(f"OpenAI failed: {str(e)}")
-        
-        raise ValueError("No working AI API keys configured")
+        return await self.analyze_with_groq(prompt, system_prompt)
     
     async def extract_json(self, prompt: str, system_prompt: str = None, use_deepseek: bool = False) -> dict:
         """Extract structured JSON data using AI with robust parsing"""
@@ -268,12 +177,9 @@ class AIService:
     
     async def extract_json_with_thinking(self, prompt: str, system_prompt: str = None) -> dict:
         """
-        Extract structured JSON using AI
-        Uses DeepSeek for complex analysis (topical maps)
+        Extract structured JSON using Groq only
         """
-        # Use DeepSeek for complex analysis
-        print("Using DeepSeek for complex JSON extraction...")
-        return await self.extract_json(prompt, system_prompt, use_deepseek=True)
+        return await self.extract_json(prompt, system_prompt, use_deepseek=False)
 
 
 

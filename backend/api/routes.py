@@ -336,3 +336,30 @@ async def get_history(
             for a in analyses
         ]
     }
+
+
+@router.delete("/api/analysis/{analysis_id}")
+async def delete_analysis(
+    analysis_id: str,
+    current_user: UserInfo = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete an analysis"""
+    analysis = database_store.get_analysis(db, analysis_id)
+    
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found"
+        )
+    
+    if analysis['user_email'] != current_user.email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+    
+    # Delete the analysis
+    database_store.delete_analysis(db, analysis_id)
+    
+    return {"message": "Analysis deleted successfully"}

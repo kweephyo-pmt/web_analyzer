@@ -233,8 +233,8 @@ CRITICAL INSTRUCTIONS:
 """
         
         try:
-            # Use smart thinking model for complex analysis
-            result = await ai_service.extract_json_with_thinking(prompt, system_prompt)
+            # Use Groq for faster analysis
+            result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=False)
             
             # Parse semantic relationships
             semantic_rel = None

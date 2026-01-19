@@ -8,10 +8,11 @@ const Card = ({
     ...props
 }) => {
     const variants = {
-        default: 'bg-white shadow-md',
-        glass: 'glass shadow-lg',
-        bordered: 'bg-white border-2 border-slate-200',
-        elevated: 'bg-white shadow-xl',
+        default: 'bg-white shadow-lg border border-slate-200',
+        glass: 'glass shadow-xl border border-white/20',
+        bordered: 'bg-white border-2 border-slate-300 shadow-md',
+        elevated: 'bg-white shadow-2xl border border-slate-100',
+        prominent: 'bg-white shadow-2xl border-2 border-primary-200 hover:border-primary-300',
     };
 
     const hoverClass = hover ? 'card-hover' : '';

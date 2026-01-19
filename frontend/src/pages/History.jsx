@@ -40,6 +40,25 @@ const History = () => {
         }
     };
 
+    const handleDelete = async (analysisId) => {
+        if (!window.confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('access_token');
+            await axios.delete(`/api/analysis/${analysisId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success('Analysis deleted successfully');
+            // Refresh the list
+            fetchHistory();
+        } catch (error) {
+            console.error('Failed to delete analysis:', error);
+            toast.error('Failed to delete analysis');
+        }
+    };
+
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return new Intl.DateTimeFormat('en-US', {
@@ -204,25 +223,32 @@ const History = () => {
                                             </div>
 
                                             {/* URLs */}
-                                            <div className="space-y-1 ml-13">
+                                            <div className="space-y-2 ml-13 pl-1">
                                                 {analysis.urls.map((url, urlIndex) => (
                                                     <div
                                                         key={urlIndex}
-                                                        className="text-sm text-slate-600 flex items-center gap-2"
+                                                        className="text-sm flex items-center gap-2 group"
                                                     >
-                                                        <div className="w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
-                                                        <span className="truncate">{url}</span>
+                                                        <div className="w-1.5 h-1.5 bg-primary-400 rounded-full flex-shrink-0"></div>
+                                                        <a
+                                                            href={url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary-600 hover:text-primary-700 hover:underline truncate transition-colors"
+                                                        >
+                                                            {url}
+                                                        </a>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 ml-4">
                                             {analysis.status === 'completed' && (
                                                 <Button
                                                     onClick={() => navigate(`/results/${analysis.analysis_id}`)}
-                                                    className="bg-gradient-to-r from-primary-600 to-purple-600"
+                                                    variant="primary"
                                                 >
                                                     View Results
                                                     <ArrowRightIcon className="w-4 h-4 ml-2" />
@@ -236,6 +262,13 @@ const History = () => {
                                                     Check Status
                                                 </Button>
                                             )}
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => handleDelete(analysis.analysis_id)}
+                                                className="text-red-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                 </Card>

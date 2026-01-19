@@ -74,14 +74,6 @@ const Comparison = ({ comparisonData }) => {
 
     return (
         <div className="space-y-6">
-            {/* AI Badge */}
-            <div className="flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-                <SparklesIcon className="w-5 h-5 text-purple-600" />
-                <p className="text-sm text-slate-600">
-                    <span className="font-semibold text-purple-700">AI-Powered Comparison</span> - Intelligent competitive analysis
-                </p>
-            </div>
-
             {/* Business Models */}
             <Card>
                 <h3 className="font-semibold mb-4 text-lg flex items-center gap-2">
