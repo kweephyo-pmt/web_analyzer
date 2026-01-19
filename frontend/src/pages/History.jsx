@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
     ClockIcon,
     GlobeAltIcon,
@@ -20,6 +21,7 @@ const History = () => {
     const navigate = useNavigate();
     const [analyses, setAnalyses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, analysisId: null });
 
     useEffect(() => {
         fetchHistory();
@@ -41,10 +43,6 @@ const History = () => {
     };
 
     const handleDelete = async (analysisId) => {
-        if (!window.confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) {
-            return;
-        }
-
         try {
             const token = localStorage.getItem('access_token');
             await axios.delete(`/api/analysis/${analysisId}`, {
@@ -264,7 +262,7 @@ const History = () => {
                                             )}
                                             <Button
                                                 variant="outline"
-                                                onClick={() => handleDelete(analysis.analysis_id)}
+                                                onClick={() => setDeleteDialog({ isOpen: true, analysisId: analysis.analysis_id })}
                                                 className="text-red-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50"
                                             >
                                                 <TrashIcon className="w-4 h-4" />
@@ -277,6 +275,17 @@ const History = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteDialog.isOpen}
+                onClose={() => setDeleteDialog({ isOpen: false, analysisId: null })}
+                onConfirm={() => handleDelete(deleteDialog.analysisId)}
+                title="Delete Analysis?"
+                message="Are you sure you want to delete this analysis? This action cannot be undone and all associated data will be permanently removed."
+                confirmText="Delete"
+                cancelText="Cancel"
+            />
         </div>
     );
 };
