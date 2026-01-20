@@ -353,24 +353,100 @@ const KnowledgeGraph = ({ graphData }) => {
 
             {/* Selected Node Info */}
             {selectedNode && (
-                <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                            <div
-                                className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                                style={{ backgroundColor: selectedNode.color }}
-                            />
+                <Card className="bg-white border-2 border-primary-200 shadow-xl">
+                    <div className="space-y-4">
+                        {/* Header */}
+                        <div className="flex items-start justify-between pb-3 border-b border-slate-200">
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="w-10 h-10 rounded-full border-2 border-white shadow-md flex items-center justify-center"
+                                    style={{ backgroundColor: selectedNode.color }}
+                                >
+                                    <span className="text-white font-bold text-sm">
+                                        {selectedNode.label.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900">{selectedNode.label}</h3>
+                                    <p className="text-sm text-slate-500 capitalize mt-0.5">
+                                        {selectedNode.type} Entity
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedNode(null)}
+                                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                            >
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Entity Details */}
+                        <div className="space-y-3">
+                            {/* Connections */}
                             <div>
-                                <h3 className="text-lg font-bold text-slate-800">{selectedNode.label}</h3>
-                                <p className="text-sm text-slate-600 capitalize mt-0.5">{selectedNode.type}</p>
+                                <h4 className="text-sm font-semibold text-slate-700 mb-2">Connections</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-blue-50 rounded-lg p-3">
+                                        <div className="text-2xl font-bold text-blue-600">
+                                            {graphData.links.filter(l =>
+                                                l.source.id === selectedNode.id || l.target.id === selectedNode.id
+                                            ).length}
+                                        </div>
+                                        <div className="text-xs text-slate-600 mt-1">Total Links</div>
+                                    </div>
+                                    <div className="bg-green-50 rounded-lg p-3">
+                                        <div className="text-2xl font-bold text-green-600">
+                                            {selectedNode.size || 8}
+                                        </div>
+                                        <div className="text-xs text-slate-600 mt-1">Importance</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Related Entities */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-slate-700 mb-2">Related Entities</h4>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                    {graphData.links
+                                        .filter(l => l.source.id === selectedNode.id || l.target.id === selectedNode.id)
+                                        .slice(0, 5)
+                                        .map((link, idx) => {
+                                            const relatedNode = link.source.id === selectedNode.id ? link.target : link.source;
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                                    onClick={() => handleNodeClick(relatedNode)}
+                                                >
+                                                    <div
+                                                        className="w-3 h-3 rounded-full flex-shrink-0"
+                                                        style={{ backgroundColor: relatedNode.color }}
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-slate-900 truncate">
+                                                            {relatedNode.label}
+                                                        </div>
+                                                        {link.label && (
+                                                            <div className="text-xs text-slate-500 truncate">
+                                                                {link.label}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            </div>
+
+                            {/* Node Type Info */}
+                            <div className="pt-3 border-t border-slate-200">
+                                <div className="flex items-center justify-between text-xs text-slate-500">
+                                    <span>Node ID: {selectedNode.id}</span>
+                                    <span className="capitalize">{selectedNode.type}</span>
+                                </div>
                             </div>
                         </div>
-                        <button
-                            onClick={() => setSelectedNode(null)}
-                            className="p-1 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-all"
-                        >
-                            <XMarkIcon className="w-5 h-5" />
-                        </button>
                     </div>
                 </Card>
             )}
