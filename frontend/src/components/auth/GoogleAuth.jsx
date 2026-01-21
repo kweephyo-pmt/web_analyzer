@@ -1,14 +1,18 @@
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { motion } from 'framer-motion';
 
 const GoogleAuth = () => {
     const { user, login, logout, loading } = useAuth();
+    const navigate = useNavigate();
 
     const handleSuccess = async (credentialResponse) => {
         try {
             await login(credentialResponse.credential);
+            // Redirect to dashboard after successful login
+            navigate('/dashboard');
         } catch (error) {
             console.error('Login failed:', error);
         }
