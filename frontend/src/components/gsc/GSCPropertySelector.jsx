@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import {
@@ -209,8 +209,14 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
         const isSelected = selectedProperties.some(p => p.url === property.url);
 
         if (isSelected) {
+            // Deselect
             onPropertySelect(selectedProperties.filter(p => p.url !== property.url));
         } else {
+            // Check limit before selecting
+            if (selectedProperties.length >= 5) {
+                toast.error('Maximum 5 properties can be selected');
+                return;
+            }
             onPropertySelect([...selectedProperties, property]);
         }
     };
@@ -324,17 +330,13 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                             <p className="text-slate-600">No properties found</p>
                         </div>
                     ) : (
-                        <AnimatePresence>
-                            {filteredProperties.map((property, index) => {
+                        <>
+                            {filteredProperties.map((property) => {
                                 const isSelected = selectedProperties.some(p => p.url === property.url);
 
                                 return (
-                                    <motion.div
+                                    <div
                                         key={property.url}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        transition={{ delay: index * 0.05 }}
                                         onClick={() => handlePropertyToggle(property)}
                                         className={`
                                             p-4 rounded-xl border-2 cursor-pointer transition-all
@@ -369,10 +371,10 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                                                 </div>
                                             </div>
                                         </div>
-                                    </motion.div>
+                                    </div>
                                 );
                             })}
-                        </AnimatePresence>
+                        </>
                     )}
                 </div>
 
@@ -381,7 +383,7 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                     <div className="pt-4 border-t-2 border-slate-200">
                         <div className="flex items-center justify-between">
                             <p className="text-sm text-slate-600">
-                                <span className="font-bold text-primary-600">{selectedProperties.length}</span> properties selected
+                                <span className="font-bold text-primary-600">{selectedProperties.length}/5</span> properties selected
                             </p>
                             <Button
                                 variant="ghost"

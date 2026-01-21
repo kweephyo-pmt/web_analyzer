@@ -42,17 +42,24 @@ class GSCService:
             print(f"Number of site entries found: {len(site_entries)}")
             
             for idx, site in enumerate(site_entries):
+                site_url = site.get('siteUrl')
                 print(f"Site {idx + 1}: {site}")
-                property_data = {
-                    'url': site.get('siteUrl'),
-                    'permission_level': site.get('permissionLevel'),
-                }
-                properties.append(property_data)
+                
+                # Filter out domain properties (sc-domain:)
+                # Only include URL prefix properties (https://, http://)
+                if site_url and not site_url.startswith('sc-domain:'):
+                    property_data = {
+                        'url': site_url,
+                        'permission_level': site.get('permissionLevel'),
+                    }
+                    properties.append(property_data)
+                else:
+                    print(f"  -> Skipping domain property: {site_url}")
             
-            print(f"Total properties to return: {len(properties)}")
+            print(f"Total URL prefix properties to return: {len(properties)}")
             print("=" * 80)
             
-            logger.info(f"Found {len(properties)} Search Console properties")
+            logger.info(f"Found {len(properties)} URL prefix properties (domain properties filtered out)")
             return properties
             
         except HttpError as e:
