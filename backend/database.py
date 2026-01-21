@@ -15,6 +15,19 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+class User(Base):
+    """Database model for users"""
+    __tablename__ = "users"
+    
+    email = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=True)
+    picture = Column(String, nullable=True)
+    gsc_token = Column(Text, nullable=True)  # Google Search Console OAuth token
+    gsc_connected_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_login = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Analysis(Base):
     """Database model for analysis results"""
     __tablename__ = "analyses"

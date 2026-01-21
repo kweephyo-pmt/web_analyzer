@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useEffect } from 'react';
 import Button from '../components/ui/Button';
 import {
     ChartBarIcon,
@@ -14,6 +15,14 @@ import {
 
 const Home = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+
+    // Redirect to dashboard if user is logged in
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
 
     const features = [
         {

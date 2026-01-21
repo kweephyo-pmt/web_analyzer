@@ -18,8 +18,10 @@ router = APIRouter()
 # ============= Authentication Routes =============
 
 @router.post("/auth/google/login", response_model=TokenResponse)
-async def google_login(request: dict):
+async def google_login(request: dict, db: Session = Depends(get_db)):
     """Login with Google OAuth token"""
+    from utils.user_manager import get_or_create_user
+    
     token = request.get('token')
     if not token:
         raise HTTPException(
@@ -30,12 +32,21 @@ async def google_login(request: dict):
     # Verify Google token
     user_info = await verify_google_token(token)
     
+    # Create or update user in database
+    db_user = get_or_create_user(
+        db,
+        email=user_info.email,
+        name=user_info.name,
+        picture=user_info.picture
+    )
+    
     # Create JWT access token
     access_token = create_access_token(
         data={
             "sub": user_info.email,
             "name": user_info.name,
-            "picture": user_info.picture
+            "picture": user_info.picture,
+            "gsc_connected": db_user.gsc_token is not None
         }
     )
     
@@ -55,6 +66,97 @@ async def logout(current_user: UserInfo = Depends(get_current_user)):
 async def get_me(current_user: UserInfo = Depends(get_current_user)):
     """Get current user info"""
     return current_user
+
+
+# ============= Google Search Console Routes =============
+
+@router.post("/auth/gsc/connect")
+async def connect_gsc(
+    request: dict, 
+    current_user: UserInfo = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Connect Google Search Console with OAuth token that has webmasters scope
+    This endpoint stores the GSC access token in the database
+    """
+    from services.gsc_service import GSCService
+    from utils.user_manager import update_gsc_token
+    
+    gsc_token = request.get('gsc_token')
+    if not gsc_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GSC token is required"
+        )
+    
+    # Verify the token works by trying to fetch properties
+    try:
+        service = GSCService(gsc_token)
+        properties = await service.get_properties()
+        
+        # Store the token in database
+        update_gsc_token(db, current_user.email, gsc_token)
+        
+        return {
+            "message": "Successfully connected to Google Search Console",
+            "properties_count": len(properties),
+            "connected": True
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to connect to Google Search Console: {str(e)}"
+        )
+
+
+@router.get("/auth/gsc/properties")
+async def get_gsc_properties(
+    current_user: UserInfo = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get list of Search Console properties accessible by the user
+    Uses the stored GSC token from database
+    """
+    from services.gsc_service import get_user_properties
+    from utils.user_manager import get_user_gsc_token
+    
+    # Get token from database
+    gsc_token = get_user_gsc_token(db, current_user.email)
+    
+    if not gsc_token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="GSC not connected. Please connect your Google Search Console account first."
+        )
+    
+    try:
+        properties = await get_user_properties(gsc_token)
+        return {"properties": properties}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch properties: {str(e)}"
+        )
+
+
+@router.post("/auth/gsc/disconnect")
+async def disconnect_gsc(
+    current_user: UserInfo = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Disconnect Google Search Console"""
+    from utils.user_manager import clear_gsc_token
+    
+    try:
+        clear_gsc_token(db, current_user.email)
+        return {"message": "Successfully disconnected from Google Search Console"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to disconnect: {str(e)}"
+        )
 
 
 # ============= Analysis Routes =============

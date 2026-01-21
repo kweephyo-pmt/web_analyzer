@@ -65,6 +65,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
+            // Clear all user-related data from localStorage
             localStorage.removeItem('access_token');
             setUser(null);
         }
