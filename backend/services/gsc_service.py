@@ -27,23 +27,16 @@ class GSCService:
         """
         try:
             # List all sites/properties
-            print("=" * 80)
-            print("FETCHING SEARCH CONSOLE PROPERTIES")
-            print("=" * 80)
             
             sites_list = self.service.sites().list().execute()
             
-            print(f"Raw API Response: {sites_list}")
-            print(f"Response keys: {sites_list.keys() if sites_list else 'None'}")
             
             properties = []
             site_entries = sites_list.get('siteEntry', [])
             
-            print(f"Number of site entries found: {len(site_entries)}")
             
-            for idx, site in enumerate(site_entries):
+            for site in site_entries:
                 site_url = site.get('siteUrl')
-                print(f"Site {idx + 1}: {site}")
                 
                 # Filter out domain properties (sc-domain:)
                 # Only include URL prefix properties (https://, http://)
@@ -53,24 +46,16 @@ class GSCService:
                         'permission_level': site.get('permissionLevel'),
                     }
                     properties.append(property_data)
-                else:
-                    print(f"  -> Skipping domain property: {site_url}")
+                
             
-            print(f"Total URL prefix properties to return: {len(properties)}")
-            print("=" * 80)
             
             logger.info(f"Found {len(properties)} URL prefix properties (domain properties filtered out)")
             return properties
             
         except HttpError as e:
-            print(f"HTTP ERROR: Status {e.resp.status}")
-            print(f"Error content: {e.content}")
             logger.error(f"HTTP Error {e.resp.status} fetching GSC properties: {str(e)}")
             raise Exception(f"Failed to fetch Search Console properties: HTTP {e.resp.status}")
         except Exception as e:
-            print(f"UNEXPECTED ERROR: {str(e)}")
-            import traceback
-            print(f"Traceback:\n{traceback.format_exc()}")
             logger.error(f"Unexpected error fetching GSC properties: {str(e)}")
             raise Exception(f"Failed to fetch Search Console properties: {str(e)}")
     
