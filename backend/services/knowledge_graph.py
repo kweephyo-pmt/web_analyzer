@@ -28,26 +28,48 @@ class KnowledgeGraphGenerator:
             '#a855f7',  # Violet
         ]
     
-    async def extract_entities_for_domain(self, domain: str, scraped_content: Dict) -> Dict:
-        """Extract entities for a specific domain using AI"""
+    async def extract_entities_for_domain(self, domain: str, scraped_content: Dict, additional_pages: List[Dict] = None) -> Dict:
+        """Extract entities for a specific domain using AI with multi-page analysis"""
         
-        system_prompt = """You are an expert at analyzing websites and extracting key entities.
-Extract the most important entities from the website content.
-Return ONLY valid JSON without markdown formatting."""
+        # Use Firecrawl markdown if available for better content
+        if scraped_content.get('source') == 'firecrawl' and scraped_content.get('markdown'):
+            main_text = scraped_content.get('markdown', '')[:3000]
+        else:
+            main_text = scraped_content.get('text_content', '')[:2000]
         
-        prompt = f"""Analyze this website and extract key entities:
-
+        # Prepare comprehensive content from multiple pages
+        main_content = f"""
 Domain: {domain}
 Title: {scraped_content.get('title', '')}
 Description: {scraped_content.get('description', '')}
-Content Preview: {scraped_content.get('text_content', '')[:2000]}
+Main Content: {main_text}
+"""
+        
+        # Add additional page data if available
+        additional_context = ""
+        if additional_pages:
+            additional_context = "\n\nAdditional Pages Analyzed:\n"
+            for idx, page in enumerate(additional_pages[:5], 1):
+                additional_context += f"\nPage {idx}:\n"
+                additional_context += f"- Title: {page.get('title', 'N/A')}\n"
+                additional_context += f"- H1: {', '.join(page.get('headings', {}).get('h1', [])[:2])}\n"
+                additional_context += f"- H2: {', '.join(page.get('headings', {}).get('h2', [])[:3])}\n"
+        
+        system_prompt = """You are an expert at analyzing websites and extracting key entities.
+Extract the most important entities from the website content across multiple pages.
+Return ONLY valid JSON without markdown formatting."""
+        
+        prompt = f"""Analyze this website comprehensively and extract key entities:
+
+{main_content}
+{additional_context}
 
 Extract entities in these categories:
-- services: Main services or offerings (max 8)
-- products: Specific products (max 8)
-- technologies: Technologies used or mentioned (max 6)
-- audiences: Target audiences (max 5)
-- topics: Main topics or themes (max 6)
+- services: Main services or offerings (max 10)
+- products: Specific products (max 10)
+- technologies: Technologies used or mentioned (max 8)
+- audiences: Target audiences (max 6)
+- topics: Main topics or themes (max 8)
 
 Return JSON format:
 {{
@@ -58,16 +80,17 @@ Return JSON format:
   "topics": ["Topic 1", "Topic 2"]
 }}
 
-Keep names concise (under 40 characters)."""
+Keep names concise (under 40 characters). Prioritize the most important and frequently mentioned entities."""
         
         try:
-            entities = await ai_service.extract_json(prompt, system_prompt)
+            # Use DeepSeek for entity extraction (better quality, no rate limits)
+            entities = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
             
             # Validate and clean
             cleaned = {}
             for key in ['services', 'products', 'technologies', 'audiences', 'topics']:
                 if key in entities and isinstance(entities[key], list):
-                    cleaned[key] = [str(item)[:40] for item in entities[key][:10]]
+                    cleaned[key] = [str(item)[:40] for item in entities[key][:12]]
                 else:
                     cleaned[key] = []
             
@@ -84,13 +107,18 @@ Keep names concise (under 40 characters)."""
             }
     
     async def generate_graph(self, scraped_data: List[Dict]) -> KnowledgeGraphData:
-        """Generate knowledge graph with separate clusters per domain"""
+        """Generate knowledge graph with separate clusters per domain using multi-page analysis"""
         
         print("🔍 Generating AI-powered knowledge graph...")
         
         nodes = []
         links = []
         node_ids = set()
+        
+        # Import services for sitemap and scraping
+        from .sitemap_service import sitemap_service
+        from .scraper import scraper
+        import asyncio
         
         # Process each domain separately
         for idx, data in enumerate(scraped_data):
@@ -103,14 +131,44 @@ Keep names concise (under 40 characters)."""
             # Extract domain
             parsed = urlparse(data['url'])
             domain = parsed.netloc.replace('www.', '')
+            url = data['url']
             
             # Assign color to this domain
             domain_color = self.domain_colors[idx % len(self.domain_colors)]
             
             print(f"  📊 Processing {domain}...")
             
-            # Extract entities using AI
-            entities = await self.extract_entities_for_domain(domain, data)
+            # Fetch sitemap and scrape additional pages
+            print(f"     → Fetching sitemap...")
+            sitemap_urls = await sitemap_service.get_priority_pages(url, max_pages=5)
+            print(f"     → Found {len(sitemap_urls)} priority pages")
+            
+            # Scrape additional pages (excluding main page)
+            async def scrape_page(sitemap_url):
+                if sitemap_url == url:  # Skip the main page
+                    return None
+                try:
+                    page_data = await scraper.scrape_url(sitemap_url)
+                    if page_data.get('status') == 'success':
+                        return {
+                            'url': sitemap_url,
+                            'title': page_data.get('title', ''),
+                            'headings': page_data.get('headings', {})
+                        }
+                except Exception as e:
+                    print(f"     → Skipped {sitemap_url}: {str(e)}")
+                return None
+            
+            # Scrape up to 3 additional pages in parallel
+            tasks = [scrape_page(sitemap_url) for sitemap_url in sitemap_urls[:4]]
+            results = await asyncio.gather(*tasks)
+            additional_pages = [page for page in results if page is not None]
+            
+            print(f"     → Scraped {len(additional_pages)} additional pages")
+            
+            # Extract entities using AI with multi-page data
+            print(f"     → Extracting entities with AI...")
+            entities = await self.extract_entities_for_domain(domain, data, additional_pages)
             
             # Create domain node (center of cluster)
             domain_id = f"domain_{domain}"

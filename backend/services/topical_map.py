@@ -6,15 +6,61 @@ import asyncio
 
 
 class TopicalMapGenerator:
-    """AI-powered topical map generator with comprehensive semantic analysis"""
+    """
+    AI-powered topical map generator with comprehensive semantic analysis.
+    
+    Implements the complete 8-part semantic website analysis framework:
+    - Part 1: Business Intelligence Extraction
+    - Part 2: Deep Semantic Analysis
+    - Part 3: Competitive & Source Analysis
+    - Part 4: Content Strategy Framework
+    - Part 5: Comprehensive Query Research
+    - Part 6: Content Plan Generation
+    - Part 7: Semantic SEO Optimization
+    - Part 8: Competitive Positioning
+    """
+    
+    def _extract_content_themes(self, pages: List[Dict]) -> List[str]:
+        """Extract main content themes from existing pages"""
+        themes = []
+        for page in pages[:5]:
+            # Extract themes from H1 and H2 headings
+            h1s = page.get('headings', {}).get('h1', [])
+            h2s = page.get('headings', {}).get('h2', [])[:3]
+            
+            if h1s:
+                themes.extend(h1s)
+            if h2s:
+                themes.extend(h2s)
+        
+        # Return unique themes
+        return list(set(themes))[:15]
     
     async def generate_topical_map_with_ai(self, scraped_data: Dict) -> TopicalMapData:
-        """Generate comprehensive topical map using smart thinking model with detailed prompt"""
+        """
+        Generate comprehensive topical map using AI with detailed 8-part semantic analysis.
+        
+        This method performs:
+        1. Multi-page content scraping from sitemap
+        2. Comprehensive semantic analysis using DeepSeek AI
+        3. Real competitor detection from SERP data
+        4. Expansive content plan generation (150-200+ articles)
+        """
         
         url = scraped_data.get('url', '')
         title = scraped_data.get('title', '')
         description = scraped_data.get('description', '')
-        text = scraped_data.get('text_content', '')[:5000]  # More content for analysis
+        
+        # Use Firecrawl markdown if available (better structure), otherwise use text_content
+        if scraped_data.get('source') == 'firecrawl' and scraped_data.get('markdown'):
+            # Firecrawl: Use full markdown (better structure, more context)
+            text = scraped_data.get('markdown', '')[:8000]  # Use more content from markdown
+            print(f"✅ Using Firecrawl markdown ({len(text)} chars)")
+        else:
+            # BeautifulSoup: Use text_content
+            text = scraped_data.get('text_content', '')[:5000]
+            print(f"📄 Using BeautifulSoup text ({len(text)} chars)")
+        
         headings = scraped_data.get('headings', {})
         links = scraped_data.get('links', [])
         
@@ -25,24 +71,32 @@ class TopicalMapGenerator:
         central_entity = domain.split('.')[0].title()
         
         # Fetch sitemap and scrape additional pages for better analysis
-        print(f"Fetching sitemap for {domain}...")
+        print(f"🔍 Fetching sitemap for {domain}...")
         from .sitemap_service import sitemap_service
         from .scraper import scraper
         
-        sitemap_urls = await sitemap_service.get_priority_pages(url, max_pages=5)  # Reduced from 10 to 5
-        print(f"Found {len(sitemap_urls)} priority pages from sitemap")
+        sitemap_urls = await sitemap_service.get_priority_pages(url, max_pages=5)
+        print(f"📄 Found {len(sitemap_urls)} priority pages from sitemap")
         
-        # Scrape additional pages in parallel (excluding the main page we already have)
+        # Scrape additional pages in parallel with FULL content for better analysis
         async def scrape_page(sitemap_url):
             if sitemap_url == url:  # Skip the main page
                 return None
             try:
                 page_data = await scraper.scrape_url(sitemap_url)
                 if page_data.get('status') == 'success':
+                    # Get full content for content strategy analysis
+                    if page_data.get('source') == 'firecrawl' and page_data.get('markdown'):
+                        content_preview = page_data.get('markdown', '')[:2000]
+                    else:
+                        content_preview = page_data.get('text_content', '')[:1500]
+                    
                     return {
                         'url': sitemap_url,
                         'title': page_data.get('title', ''),
-                        'headings': page_data.get('headings', {})
+                        'headings': page_data.get('headings', {}),
+                        'content_preview': content_preview,
+                        'h2_count': len(page_data.get('headings', {}).get('h2', []))
                     }
             except Exception as e:
                 print(f"  -> Skipped {sitemap_url}: {str(e)}")
@@ -53,7 +107,7 @@ class TopicalMapGenerator:
         results = await asyncio.gather(*tasks)
         additional_pages = [page for page in results if page is not None]
         
-        print(f"Successfully scraped {len(additional_pages)} additional pages")
+        print(f"✅ Successfully scraped {len(additional_pages)} additional pages")
         
         # Prepare comprehensive content data
         content_data = {
@@ -73,16 +127,21 @@ class TopicalMapGenerator:
                     'url': page['url'],
                     'title': page['title'],
                     'h1': page['headings'].get('h1', [])[:3],
-                    'h2': page['headings'].get('h2', [])[:5]
+                    'h2': page['headings'].get('h2', [])[:5],
+                    'content_preview': page.get('content_preview', '')[:500],
+                    'h2_count': page.get('h2_count', 0)
                 }
-                for page in additional_pages[:8]
-            ]
+                for page in additional_pages[:5]
+            ],
+            'existing_content_themes': self._extract_content_themes(additional_pages)
         }
         
+        # System prompt for AI analysis
         system_prompt = """You are an expert SEO strategist and business analyst specializing in semantic website analysis and content strategy.
 Analyze the provided website data and create a comprehensive topical map following the 8-part semantic analysis framework.
 Return ONLY valid JSON without markdown formatting."""
         
+        # Main analysis prompt - comprehensive 8-part framework
         prompt = f"""Perform a COMPREHENSIVE semantic analysis of this website using the detailed 8-part framework below.
 
 Website Data:
@@ -132,11 +191,14 @@ Analyze the competitive landscape:
 
 PART 4: CONTENT STRATEGY FRAMEWORK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT: Analyze the 'existing_content_themes' and 'site_structure' data provided to understand what content already exists.
+
+Based on existing content analysis:
 • Audience Segments (3-5): Define detailed segments with expertise levels, goals, pain points, content preferences
-• Core Topics (6-10): Direct revenue/conversion topics
-• Outer Topics (8-12): Authority/traffic building topics
-• Content Gaps (4-6): Opportunities competitors missed
-• Priority Areas (4-6): Top strategic content focuses
+• Core Topics (6-10): Direct revenue/conversion topics (identify which are MISSING from existing content)
+• Outer Topics (8-12): Authority/traffic building topics (identify which are MISSING from existing content)
+• Content Gaps (4-6): Specific topics/angles NOT covered in existing {len(content_data.get('existing_content_themes', []))} content themes
+• Priority Areas (4-6): Top strategic content focuses based on what's missing vs what competitors rank for
 
 PART 5: COMPREHENSIVE QUERY RESEARCH
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -276,9 +338,9 @@ CRITICAL INSTRUCTIONS:
 """
         
         try:
-            # Use Groq for fast initial analysis
-            print(f"Generating topical analysis for {url}...")
-            result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=False)
+            # Use DeepSeek for all analysis (high quality, no rate limits, ~10-15 min per URL)
+            print(f"🤖 Generating topical analysis for {url}...")
+            result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
             
             # Parse semantic relationships
             semantic_rel = None
@@ -322,8 +384,47 @@ CRITICAL INSTRUCTIONS:
                 from models.schemas import SEOOptimization
                 seo_optimization = SEOOptimization(**result['seo_optimization'])
             
-            # Generate expansive content plan (150-200+ articles)
-            print(f"Generating expansive content plan for {url}...")
+            # Enhance competitive analysis with real SERP data
+            if competitive_analysis:
+                print(f"🔍 Finding real competitors from SERP...")
+                from .serp_service import serp_service
+                
+                # Get top keywords from the analysis
+                keywords = result.get('key_topics', [])[:5]  # Use top 5 topics as keywords
+                if not keywords and query_temps:
+                    # Fallback to commercial queries if no topics
+                    keywords = query_temps.commercial[:3]
+                
+                if keywords:
+                    serp_insights = await serp_service.get_serp_insights(keywords, domain)
+                    
+                    # Get real competitor domains from SERP (exclude user's domain)
+                    serp_competitors = [c['domain'] for c in serp_insights['top_competitors'] if isinstance(c, dict)]
+                    real_competitors = [c for c in serp_competitors if c != domain][:10]
+                    
+                    if real_competitors:
+                        print(f"✅ Found {len(real_competitors)} real competitors: {', '.join(real_competitors[:3])}...")
+                    
+                    # REPLACE AI competitors with SERP competitors (don't merge - AI often guesses wrong)
+                    # Only use real data from Google search results
+                    competitive_analysis.top_competitors = real_competitors[:15]
+                    
+                    competitive_analysis.serp_insights.extend([
+                        f"PAA: {q}" for q in serp_insights['people_also_ask'][:10]
+                    ])
+                    competitive_analysis.serp_insights.extend([
+                        f"Related: {s}" for s in serp_insights['related_searches'][:5]
+                    ])
+                    
+                    # Add competitor insights
+                    if real_competitors:
+                        competitive_analysis.content_approaches.extend([
+                            f"Top ranking competitors: {', '.join(real_competitors[:3])}",
+                            "Analyze competitor content strategies for these domains"
+                        ])
+            
+            # Generate expansive content plan (40-50 articles for faster generation)
+            print(f"📝 Generating content plan for {url}...")
             expanded_articles = await self._generate_expansive_content_plan(
                 content_data, 
                 result.get('content_strategy', {}),
@@ -333,7 +434,7 @@ CRITICAL INSTRUCTIONS:
             
             # Combine initial articles with expanded batch
             all_articles = (content_articles or []) + expanded_articles
-            print(f"Total articles generated: {len(all_articles)}")
+            print(f"✅ Total articles generated: {len(all_articles)}")
             
             # Create comprehensive TopicalMapData
             return TopicalMapData(
@@ -352,12 +453,12 @@ CRITICAL INSTRUCTIONS:
                 competitive_advantages=result.get('competitive_advantages', [])[:10],
                 technology_stack=result.get('technology_stack', [])[:10],
                 competitive_analysis=competitive_analysis,
-                content_articles=all_articles,  # Now includes 150-200+ articles
+                content_articles=all_articles,  # Now includes 40-50 articles
                 seo_optimization=seo_optimization
             )
             
         except Exception as e:
-            print(f"AI topical map generation failed: {str(e)}")
+            print(f"❌ AI topical map generation failed: {str(e)}")
             raise  # Let the error propagate instead of using fallback
     
     async def _generate_expansive_content_plan(
@@ -367,7 +468,15 @@ CRITICAL INSTRUCTIONS:
         semantic_relationships: Dict,
         initial_articles: List
     ) -> List:
-        """Generate 150-200+ article ideas using batch processing"""
+        """
+        Generate 40-50 article ideas using batch processing.
+        
+        This method:
+        1. Extracts taxonomy categories from initial articles
+        2. Generates 8-10 articles per category
+        3. Processes categories sequentially to avoid rate limits
+        4. Returns comprehensive content plan
+        """
         import asyncio
         from models.schemas import ContentArticle
         
@@ -387,13 +496,13 @@ CRITICAL INSTRUCTIONS:
             for topic in (core_topics + outer_topics)[:10]:
                 categories[topic] = set(['Overview', 'Guide', 'Best Practices'])
         
-        print(f"Generating content for {len(categories)} main categories...")
+        print(f"📊 Generating content for {len(categories)} main categories...")
         
         # Generate articles sequentially with delays to avoid rate limits
         all_expanded_articles = []
         
-        for idx, (category_l1, subcategories) in enumerate(list(categories.items())[:8]):
-            print(f"Processing category {idx + 1}/8: {category_l1}")
+        for idx, (category_l1, subcategories) in enumerate(list(categories.items())[:4]):
+            print(f"  📁 Processing category {idx + 1}/4: {category_l1}")
             
             try:
                 articles = await self._generate_category_articles(
@@ -403,19 +512,19 @@ CRITICAL INSTRUCTIONS:
                     semantic_relationships
                 )
                 all_expanded_articles.extend(articles)
-                print(f"  -> Generated {len(articles)} articles for {category_l1}")
+                print(f"    ✅ Generated {len(articles)} articles for {category_l1}")
                 
                 # Add delay between categories to avoid rate limits (except for last one)
-                if idx < len(list(categories.items())[:8]) - 1:
-                    print(f"  -> Waiting 2 seconds before next category...")
-                    await asyncio.sleep(2)
+                if idx < len(list(categories.items())[:4]) - 1:
+                    print(f"    ⏳ Waiting 1 second before next category...")
+                    await asyncio.sleep(1)
                     
             except Exception as e:
-                print(f"  -> Error generating articles for {category_l1}: {e}")
+                print(f"    ❌ Error generating articles for {category_l1}: {e}")
                 # Continue with next category even if one fails
                 continue
         
-        print(f"Generated {len(all_expanded_articles)} additional articles")
+        print(f"✅ Generated {len(all_expanded_articles)} additional articles")
         return all_expanded_articles
     
     async def _generate_category_articles(
@@ -425,13 +534,21 @@ CRITICAL INSTRUCTIONS:
         subcategories: List[str],
         semantic_relationships: Dict
     ) -> List:
-        """Generate 20-30 articles for a specific category"""
+        """
+        Generate 8-10 articles for a specific category.
+        
+        Uses DeepSeek AI to create diverse article types:
+        - Beginner guides (2-3 articles)
+        - Advanced tutorials (2-3 articles)
+        - Comparison/Review content (2-3 articles)
+        - Tool/Resource pages (1-2 articles)
+        """
         from models.schemas import ContentArticle
         
         system_prompt = """You are an expert content strategist. Generate comprehensive article ideas for the given category.
 Return ONLY valid JSON array without markdown formatting."""
         
-        prompt = f"""Generate 25-30 detailed article ideas for this content category.
+        prompt = f"""Generate 8-10 detailed article ideas for this content category.
 
 Business Context:
 - Domain: {content_data.get('domain')}
@@ -443,11 +560,10 @@ Semantic Context:
 - Core Entities: {', '.join(semantic_relationships.get('core_entities', [])[:10])}
 
 Generate articles covering:
-1. Beginner guides (5-7 articles)
-2. Advanced tutorials (5-7 articles)
-3. Comparison/Review content (5-7 articles)
-4. Tool/Resource pages (3-5 articles)
-5. Case studies/Examples (3-5 articles)
+1. Beginner guides (2-3 articles)
+2. Advanced tutorials (2-3 articles)
+3. Comparison/Review content (2-3 articles)
+4. Tool/Resource pages (1-2 articles)
 
 Return JSON array with this structure:
 [
@@ -470,18 +586,19 @@ Make titles specific, actionable, and SEO-friendly. Vary the article types and p
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=False)
+                # Use DeepSeek for bulk article generation (reliable, no rate limits)
+                result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
                 
                 # Handle both array and object responses
                 articles_data = result if isinstance(result, list) else result.get('articles', [])
                 
                 articles = []
-                for article_data in articles_data[:30]:  # Limit to 30 per category
+                for article_data in articles_data[:10]:  # Limit to 10 per category
                     try:
                         article = ContentArticle(**article_data)
                         articles.append(article)
                     except Exception as e:
-                        print(f"Error parsing article: {e}")
+                        print(f"      ⚠️  Error parsing article: {e}")
                         continue
                 
                 return articles
@@ -492,22 +609,26 @@ Make titles specific, actionable, and SEO-friendly. Vary the article types and p
                 if 'rate_limit' in error_str.lower() or '429' in error_str:
                     if attempt < max_retries - 1:
                         wait_time = (attempt + 1) * 2  # 2s, 4s, 6s
-                        print(f"Rate limit hit, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                        print(f"      ⏳ Rate limit hit, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
                         await asyncio.sleep(wait_time)
                         continue
                     else:
-                        print(f"Max retries reached for category {category_l1}")
+                        print(f"      ❌ Max retries reached for category {category_l1}")
                         return []  # Return empty list instead of raising
                 else:
                     # Non-rate-limit error, return empty list
-                    print(f"Error generating articles for category {category_l1}: {e}")
+                    print(f"      ❌ Error generating articles for category {category_l1}: {e}")
                     return []
         
         # If all retries exhausted, return empty list
         return []
     
     async def generate_multiple(self, scraped_data_list: List[Dict]) -> List[TopicalMapData]:
-        """Generate topical maps for multiple URLs using AI"""
+        """
+        Generate topical maps for multiple URLs using AI.
+        
+        Processes multiple URLs in parallel for efficiency.
+        """
         import asyncio
         
         tasks = []

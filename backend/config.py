@@ -4,7 +4,7 @@ from typing import List
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "sqlite:///./web_analysis.db"
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/web_analysis"
     
     # Google OAuth
     GOOGLE_CLIENT_ID: str
@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""
+    SERPAPI_KEY: str = ""
+    FIRECRAWL_API_KEY: str = ""
     
     # App Settings
     ENVIRONMENT: str = "development"

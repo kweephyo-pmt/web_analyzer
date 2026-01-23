@@ -23,6 +23,12 @@ class Comparator:
             if data.get('status') != 'success':
                 continue
             
+            # Use Firecrawl markdown if available for better preview
+            if data.get('source') == 'firecrawl' and data.get('markdown'):
+                text_preview = data.get('markdown', '')[:1500]
+            else:
+                text_preview = data.get('text_content', '')[:1000]
+            
             website_info = {
                 'url': data['url'],
                 'title': data.get('title', ''),
@@ -32,7 +38,7 @@ class Comparator:
                 'key_topics': tmap.key_topics,
                 'conversion_methods': tmap.conversion_methods,
                 'h2_headings': data.get('headings', {}).get('h2', [])[:10],
-                'text_preview': data.get('text_content', '')[:1000]
+                'text_preview': text_preview
             }
             websites_data.append(website_info)
         
@@ -74,7 +80,8 @@ Return a JSON object with these exact fields:
 Provide accurate, data-driven insights based on the actual content."""
         
         try:
-            result = await ai_service.extract_json(prompt, system_prompt)
+            # Use DeepSeek for comparison analysis (better quality, no rate limits)
+            result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
             
             # Validate and create ComparisonData
             return ComparisonData(

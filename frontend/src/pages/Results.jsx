@@ -290,7 +290,7 @@ const Results = () => {
                             <p className="text-sm">
                                 <span className="font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">AI-Powered Analysis</span>
                                 <span className="text-slate-600 mx-2">•</span>
-                                <span className="text-slate-600">Generated with Grok & DeepSeek</span>
+                                <span className="text-slate-600">Generated with Groq & DeepSeek</span>
                             </p>
                         </div>
                     </div>

@@ -100,9 +100,6 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
             if (response.data.properties) {
                 setIsConnected(true);
                 setProperties(response.data.properties);
-                if (response.data.properties.length > 0) {
-                    toast.success(`Connected! Found ${response.data.properties.length} properties`);
-                }
             }
         } catch (error) {
             // Not connected or error - that's okay
@@ -362,9 +359,24 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                                                     )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-slate-900 truncate">
-                                                        {property.url}
-                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium text-slate-900 truncate">
+                                                            {property.url}
+                                                        </p>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigator.clipboard.writeText(property.url);
+                                                                toast.success('URL copied to clipboard!');
+                                                            }}
+                                                            className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                                            title="Copy URL"
+                                                        >
+                                                            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                     <p className="text-xs text-slate-500 capitalize">
                                                         {property.permission_level?.replace('_', ' ')}
                                                     </p>
