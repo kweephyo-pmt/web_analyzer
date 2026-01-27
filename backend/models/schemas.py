@@ -137,6 +137,23 @@ class QueryTemplates(BaseModel):
     voice_search: Optional[List[str]] = []  # Conversational queries
 
 
+class TaxonomyNode(BaseModel):
+    """Hierarchical taxonomy node for content organization"""
+    name: str  # Category/subcategory name
+    level: int  # 1 (L1), 2 (L2), 3 (L3)
+    parent: Optional[str] = None  # Parent category name
+    children: Optional[List[str]] = []  # Child category names
+    color: Optional[str] = None  # Color for visualization
+
+
+class OntologyRelation(BaseModel):
+    """Ontology relationship in Subject-Predicate-Object-Context format"""
+    subject: str  # The main entity
+    predicate: str  # The relationship type (e.g., "help", "provide", "simulates")
+    object: str  # The target entity
+    context: str  # The context or domain where this relationship applies
+
+
 class TopicalMapData(BaseModel):
     """Comprehensive topical map with semantic analysis"""
     # Basic Information
@@ -167,6 +184,11 @@ class TopicalMapData(BaseModel):
     
     # Part 7: SEO Optimization
     seo_optimization: Optional[SEOOptimization] = None
+    
+    # Taxonomy & Ontology (New Features)
+    taxonomy: Optional[List[TaxonomyNode]] = None  # Hierarchical content taxonomy
+    ontology: Optional[List[OntologyRelation]] = None  # Subject-Predicate-Object-Context relationships
+
 
 
 

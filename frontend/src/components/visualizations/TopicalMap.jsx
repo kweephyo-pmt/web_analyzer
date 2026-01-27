@@ -9,7 +9,10 @@ import {
     MagnifyingGlassIcon,
     TrophyIcon,
     DocumentTextIcon,
-    SparklesIcon
+    SparklesIcon,
+    Squares2X2Icon,
+    TableCellsIcon,
+    WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
 
 const TopicalMap = ({ topicalMaps }) => {
@@ -21,7 +24,10 @@ const TopicalMap = ({ topicalMaps }) => {
         queries: false,
         competitive: true,
         articles: false,
-        seo: true
+        seo: true,
+        taxonomy: true,
+        ontology: true,
+        tools: true
     });
 
     if (!topicalMaps || topicalMaps.length === 0) {
@@ -33,6 +39,10 @@ const TopicalMap = ({ topicalMaps }) => {
     }
 
     const activeMap = topicalMaps[activeIndex];
+
+    // Debug: Check if taxonomy and ontology data exists
+    console.log('Taxonomy data:', activeMap.taxonomy);
+    console.log('Ontology data:', activeMap.ontology);
 
     const toggleSection = (section) => {
         setExpandedSections(prev => ({
@@ -276,6 +286,289 @@ const TopicalMap = ({ topicalMaps }) => {
                 </div>
             )}
 
+            {/* Taxonomy Structure */}
+            {activeMap.taxonomy && (
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader
+                        title="Taxonomy"
+                        color="from-indigo-600 to-indigo-700"
+                        icon={Squares2X2Icon}
+                        section="taxonomy"
+                        count={activeMap.taxonomy.length}
+                    />
+                    {expandedSections.taxonomy && (
+                        <div className="p-4">
+                            {/* Group by level */}
+                            {[1, 2, 3].map(level => {
+                                const nodesAtLevel = activeMap.taxonomy.filter(node => node.level === level);
+                                if (nodesAtLevel.length === 0) return null;
+
+                                return (
+                                    <div key={level} className="mb-4 last:mb-0">
+                                        <h4 className="text-xs font-semibold text-slate-500 mb-2 uppercase">
+                                            Level {level} {level === 1 ? '(Main Categories)' : level === 2 ? '(Subcategories)' : '(Sub-subcategories)'}
+                                        </h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {nodesAtLevel.map((node, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="px-3 py-2 rounded-lg text-sm font-medium text-white shadow-sm"
+                                                    style={{ backgroundColor: node.color || '#6366F1' }}
+                                                >
+                                                    {node.name}
+                                                    {node.children && node.children.length > 0 && (
+                                                        <span className="ml-2 text-xs opacity-75">
+                                                            ({node.children.length})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Taxonomy Visualization */}
+            {activeMap.taxonomy && (
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-600 to-indigo-700">
+                        <div className="flex items-center gap-3">
+                            <Squares2X2Icon className="w-5 h-5 text-white" />
+                            <h3 className="text-lg font-semibold text-white">Taxonomy Visualization</h3>
+                        </div>
+                    </div>
+                    <div className="p-6 bg-slate-50">
+                        <div className="overflow-x-auto">
+                            <div className="inline-block min-w-full">
+                                {/* Build tree structure */}
+                                {(() => {
+                                    // Get level 1 nodes (root nodes)
+                                    const level1Nodes = activeMap.taxonomy.filter(node => node.level === 1);
+
+                                    return (
+                                        <div className="flex flex-col items-center gap-8">
+                                            {level1Nodes.map((l1Node, l1Idx) => (
+                                                <div key={l1Idx} className="flex flex-col items-center">
+                                                    {/* Level 1 Node */}
+                                                    <div
+                                                        className="px-6 py-3 rounded-lg text-sm font-semibold text-white shadow-md border-2 border-white"
+                                                        style={{ backgroundColor: l1Node.color || '#4F46E5' }}
+                                                    >
+                                                        {l1Node.name}
+                                                    </div>
+
+                                                    {/* Connector line */}
+                                                    {l1Node.children && l1Node.children.length > 0 && (
+                                                        <div className="w-0.5 h-8 bg-slate-300"></div>
+                                                    )}
+
+                                                    {/* Level 2 Nodes */}
+                                                    {l1Node.children && l1Node.children.length > 0 && (
+                                                        <div className="flex gap-4 relative">
+                                                            {/* Horizontal connector */}
+                                                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300" style={{ top: '-16px' }}></div>
+
+                                                            {l1Node.children.map((l2Name, l2Idx) => {
+                                                                const l2Node = activeMap.taxonomy.find(n => n.name === l2Name && n.level === 2);
+                                                                if (!l2Node) return null;
+
+                                                                return (
+                                                                    <div key={l2Idx} className="flex flex-col items-center">
+                                                                        {/* Vertical connector to L2 */}
+                                                                        <div className="w-0.5 h-4 bg-slate-300"></div>
+
+                                                                        {/* Level 2 Node */}
+                                                                        <div
+                                                                            className="px-4 py-2 rounded-lg text-xs font-medium text-white shadow-sm"
+                                                                            style={{ backgroundColor: l2Node.color || '#10B981' }}
+                                                                        >
+                                                                            {l2Node.name}
+                                                                        </div>
+
+                                                                        {/* Connector to L3 */}
+                                                                        {l2Node.children && l2Node.children.length > 0 && (
+                                                                            <div className="w-0.5 h-6 bg-slate-300"></div>
+                                                                        )}
+
+                                                                        {/* Level 3 Nodes */}
+                                                                        {l2Node.children && l2Node.children.length > 0 && (
+                                                                            <div className="flex flex-col gap-2">
+                                                                                {l2Node.children.map((l3Name, l3Idx) => {
+                                                                                    const l3Node = activeMap.taxonomy.find(n => n.name === l3Name && n.level === 3);
+                                                                                    if (!l3Node) return null;
+
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={l3Idx}
+                                                                                            className="px-3 py-1.5 rounded text-xs font-medium text-white shadow-sm"
+                                                                                            style={{ backgroundColor: l3Node.color || '#F59E0B' }}
+                                                                                        >
+                                                                                            {l3Node.name}
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Ontology Relationships */}
+            {activeMap.ontology && (
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader
+                        title="Ontology"
+                        color="from-purple-600 to-purple-700"
+                        icon={TableCellsIcon}
+                        section="ontology"
+                        count={activeMap.ontology.length}
+                    />
+                    {expandedSections.ontology && (
+                        <div className="p-4">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="bg-purple-50">
+                                            <th className="border border-purple-200 px-4 py-2 text-left text-sm font-semibold text-purple-900">
+                                                Subject
+                                            </th>
+                                            <th className="border border-purple-200 px-4 py-2 text-left text-sm font-semibold text-purple-900">
+                                                Predicate
+                                            </th>
+                                            <th className="border border-purple-200 px-4 py-2 text-left text-sm font-semibold text-purple-900">
+                                                Object
+                                            </th>
+                                            <th className="border border-purple-200 px-4 py-2 text-left text-sm font-semibold text-purple-900">
+                                                Context
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {activeMap.ontology.map((relation, idx) => (
+                                            <tr key={idx} className="hover:bg-purple-50 transition-colors">
+                                                <td className="border border-slate-200 px-4 py-2 text-sm text-slate-700">
+                                                    {relation.subject}
+                                                </td>
+                                                <td className="border border-slate-200 px-4 py-2 text-sm text-purple-600 font-medium">
+                                                    {relation.predicate}
+                                                </td>
+                                                <td className="border border-slate-200 px-4 py-2 text-sm text-slate-700">
+                                                    {relation.object}
+                                                </td>
+                                                <td className="border border-slate-200 px-4 py-2 text-sm text-slate-600 italic">
+                                                    {relation.context}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Audience Segments */}
+            {activeMap.audience_segments && activeMap.audience_segments.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader
+                        title="Audience Segments"
+                        color="from-purple-600 to-purple-700"
+                        icon={UserGroupIcon}
+                        section="audience"
+                        count={activeMap.audience_segments.length}
+                    />
+                    {expandedSections.audience && (
+                        <div className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {activeMap.audience_segments.map((segment, idx) => (
+                                    <div key={idx} className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <UserGroupIcon className="w-5 h-5 text-purple-600" />
+                                            <h4 className="font-semibold text-purple-900">{segment.expertise_level}</h4>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-600 mb-1">Goal:</p>
+                                                <p className="text-sm text-slate-700">{segment.primary_goal}</p>
+                                            </div>
+
+                                            {segment.content_types && segment.content_types.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-600 mb-1">Content Types:</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {segment.content_types.map((type, typeIdx) => (
+                                                            <span key={typeIdx} className="text-xs px-2 py-0.5 bg-white rounded text-slate-700">
+                                                                {type}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {segment.pain_points && segment.pain_points.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-600 mb-1">Pain Points:</p>
+                                                    <ul className="text-xs text-slate-600 space-y-0.5">
+                                                        {segment.pain_points.slice(0, 3).map((pain, painIdx) => (
+                                                            <li key={painIdx}>• {pain}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Tools & Platforms */}
+            {activeMap.technology_stack && activeMap.technology_stack.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader
+                        title="Tools & Platforms"
+                        color="from-blue-600 to-blue-700"
+                        icon={WrenchScrewdriverIcon}
+                        section="tools"
+                        count={activeMap.technology_stack.length}
+                    />
+                    {expandedSections.tools && (
+                        <div className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {activeMap.technology_stack.map((tech, idx) => (
+                                    <div key={idx} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <WrenchScrewdriverIcon className="w-5 h-5 text-blue-600" />
+                                            <h4 className="font-semibold text-blue-900">{tech}</h4>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Query Research */}
             {activeMap.query_templates && (
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
@@ -363,7 +656,7 @@ const TopicalMap = ({ topicalMaps }) => {
                 </div>
             )}
 
-            {/* Content Plan (Articles) */}
+            {/* Content Plan */}
             {activeMap.content_articles && (
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                     <SectionHeader
@@ -375,29 +668,60 @@ const TopicalMap = ({ topicalMaps }) => {
                     />
                     {expandedSections.articles && (
                         <div className="p-4">
-                            {Object.entries(
-                                activeMap.content_articles.reduce((acc, article) => {
-                                    const cat = article.category_l1 || 'Uncategorized';
-                                    if (!acc[cat]) acc[cat] = [];
-                                    acc[cat].push(article);
-                                    return acc;
-                                }, {})
-                            ).map(([category, articles]) => (
-                                <div key={category} className="mb-4 last:mb-0">
-                                    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-2">
-                                        <h4 className="font-semibold text-blue-900">{category}</h4>
-                                        <span className="text-xs text-blue-600">{articles.length} articles</span>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-4">
-                                        {articles.map((article, idx) => (
-                                            <div key={idx} className="text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded hover:bg-slate-100 transition-colors">
-                                                <span className="text-blue-600 font-medium mr-2">•</span>
-                                                {article.title}
-                                            </div>
+                            {/* Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200">
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                                Article Title ↕
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                                Section ↕
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                                Article Type ↕
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                                Level 1 ↕
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider w-8">
+
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {activeMap.content_articles.map((article, idx) => (
+                                            <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                                <td className="px-4 py-3 text-sm text-slate-700">
+                                                    {article.title}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${article.section === 'Core'
+                                                        ? 'bg-blue-100 text-blue-700'
+                                                        : 'bg-slate-100 text-slate-700'
+                                                        }`}>
+                                                        {article.section}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-slate-600 text-white">
+                                                        {article.article_type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-700">
+                                                    {article.category_l1}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <button className="text-slate-400 hover:text-slate-600">
+                                                        ⋮
+                                                    </button>
+                                                </td>
+                                            </tr>
                                         ))}
-                                    </div>
-                                </div>
-                            ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>

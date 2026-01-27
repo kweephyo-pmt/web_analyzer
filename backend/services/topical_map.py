@@ -122,7 +122,7 @@ class TopicalMapGenerator:
             'sample_links': [{'text': link.get('text', ''), 'url': link.get('url', '')} for link in links[:30]],
             'sitemap_pages': len(sitemap_urls),
             'additional_pages_analyzed': len(additional_pages),
-            'site_structure': [
+            'site_structure': [     
                 {
                     'url': page['url'],
                     'title': page['title'],
@@ -216,7 +216,7 @@ Provide 8-15 example queries per category:
 
 PART 6: CONTENT PLAN GENERATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Create 10-20 article ideas with:
+Create 30-50 article ideas with:
 • Title: Specific, SEO-optimized article title
 • Section: "Core" (revenue-focused) or "Outer" (authority-building)
 • Article Type: "informative", "service_page", "listicle", "tool_page"
@@ -236,6 +236,25 @@ PART 8: COMPETITIVE POSITIONING
 Document:
 • Competitive Advantages (5-8): Key differentiators
 • Technology Stack (6-10): Technologies/tools/platforms used
+
+PART 9: TAXONOMY STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a hierarchical taxonomy (10-20 nodes):
+• Level 1 (L1): Main categories (3-5 categories) - use color #4F46E5
+• Level 2 (L2): Subcategories under each L1 (2-4 per L1) - use color #10B981
+• Level 3 (L3): Sub-subcategories under each L2 (2-3 per L2) - use color #F59E0B
+• Each node should have: name, level, parent, children array, color
+• Build from content_articles categories to ensure consistency
+
+PART 10: ONTOLOGY RELATIONSHIPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create semantic relationships (8-12 relations):
+• Format: Subject → Predicate → Object → Context
+• Use semantic_relationships data to build meaningful connections
+• Examples:
+  - "{central_entity}" → "provides" → "Core Service" → "Target Market"
+  - "Technology" → "enables" → "Business Outcome" → "Industry Context"
+• Focus on business value, capabilities, and domain expertise
 
 ═══════════════════════════════════════════════════════════
 REQUIRED JSON OUTPUT STRUCTURE
@@ -326,7 +345,39 @@ Return comprehensive JSON with this EXACT structure:
   }},
   
   "competitive_advantages": ["Advantage 1", "Advantage 2", "..."],
-  "technology_stack": ["Tech 1", "Tech 2", "..."]
+  "technology_stack": ["Tech 1", "Tech 2", "..."],
+  
+  "taxonomy": [
+    {{
+      "name": "Main Category Name",
+      "level": 1,
+      "parent": null,
+      "children": ["Subcategory 1", "Subcategory 2"],
+      "color": "#4F46E5"
+    }},
+    {{
+      "name": "Subcategory 1",
+      "level": 2,
+      "parent": "Main Category Name",
+      "children": ["Sub-sub 1", "Sub-sub 2"],
+      "color": "#10B981"
+    }}
+  ],
+  
+  "ontology": [
+    {{
+      "subject": "AI Solutions",
+      "predicate": "help",
+      "object": "Automate Processes",
+      "context": "Thai Businesses"
+    }},
+    {{
+      "subject": "Machine Learning",
+      "predicate": "learns",
+      "object": "From Data",
+      "context": "Efficiency and optimization"
+    }}
+  ]
 }}
 
 CRITICAL INSTRUCTIONS:
@@ -338,6 +389,9 @@ CRITICAL INSTRUCTIONS:
 """
         
         try:
+            # Import AI service at the start
+            from .ai_service import ai_service
+            
             # Use DeepSeek for all analysis (high quality, no rate limits, ~10-15 min per URL)
             print(f"🤖 Generating topical analysis for {url}...")
             result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
@@ -384,57 +438,124 @@ CRITICAL INSTRUCTIONS:
                 from models.schemas import SEOOptimization
                 seo_optimization = SEOOptimization(**result['seo_optimization'])
             
-            # Enhance competitive analysis with real SERP data
+            # Parse taxonomy (Part 9)
+            taxonomy = None
+            if 'taxonomy' in result and result['taxonomy']:
+                from models.schemas import TaxonomyNode
+                taxonomy = [TaxonomyNode(**node) for node in result['taxonomy']]
+            
+            # Parse ontology (Part 10)
+            ontology = None
+            if 'ontology' in result and result['ontology']:
+                from models.schemas import OntologyRelation
+                ontology = [OntologyRelation(**relation) for relation in result['ontology']]
+
+            
+            # Hybrid competitor detection: AI generates smart queries + SERP gets real results
             if competitive_analysis:
-                print(f"🔍 Finding real competitors from SERP...")
-                from .serp_service import serp_service
+                print(f"🔍 Finding competitors using AI analysis + SERP API...")
                 
-                # Get top keywords from the analysis
-                keywords = result.get('key_topics', [])[:5]  # Use top 5 topics as keywords
-                if not keywords and query_temps:
-                    # Fallback to commercial queries if no topics
-                    keywords = query_temps.commercial[:3]
-                
-                if keywords:
-                    serp_insights = await serp_service.get_serp_insights(keywords, domain)
+                # Step 1: Use AI to generate smart search queries based on scraped content
+                query_generation_prompt = f"""Based on this business analysis, generate 3-5 highly specific Google search queries that would find direct competitors.
+
+Business Information:
+- Domain: {content_data.get('domain')}
+- Business Model: {result.get('business_model', '')}
+- Central Entity: {result.get('central_entity', '')}
+- Services/Products: {', '.join(result.get('key_topics', [])[:5])}
+- Target Audience: {', '.join(result.get('target_audiences', [])[:3])}
+- Business Description: {result.get('business_description', '')[:500]}
+
+Site Content Themes:
+{', '.join(content_data.get('existing_content_themes', [])[:10])}
+
+Instructions:
+1. Create 3-5 search queries that would find direct competitors on Google
+2. Be specific about the industry, services, and location (if applicable)
+3. Use terms like "best", "top", "agency", "company", "services" to find business websites
+4. Example good queries: "custom tailoring bangkok", "bespoke suits thailand", "luxury tailors asia"
+5. Example bad queries: "tailoring" (too generic), "suits" (too broad)
+
+Return ONLY a JSON array of search queries:
+["query 1", "query 2", "query 3"]
+"""
+
+                try:
+                    from .serp_service import serp_service
                     
-                    # Get real competitor domains from SERP (exclude user's domain)
+                    # Generate smart search queries using AI
+                    queries_result = await ai_service.extract_json(
+                        query_generation_prompt,
+                        "You are a search query expert. Return only valid JSON array of search queries.",
+                        use_deepseek=True
+                    )
+                    
+                    # Extract queries
+                    if isinstance(queries_result, list):
+                        search_queries = queries_result[:5]
+                    elif isinstance(queries_result, dict) and 'queries' in queries_result:
+                        search_queries = queries_result['queries'][:5]
+                    else:
+                        # Fallback to basic queries
+                        search_queries = [
+                            f"{result.get('business_model', '')} {result.get('central_entity', '')}",
+                            f"{result.get('key_topics', [''])[0]} services"
+                        ]
+                    
+                    print(f"  📊 AI-generated search queries: {search_queries}")
+                    
+                    # Step 2: Use SERP API to get real competitors from Google
+                    serp_insights = await serp_service.get_serp_insights(search_queries, domain)
+                    
+                    # Extract competitor domains
                     serp_competitors = [c['domain'] for c in serp_insights['top_competitors'] if isinstance(c, dict)]
-                    real_competitors = [c for c in serp_competitors if c != domain][:10]
+                    
+                    # Step 3: Filter out generic/irrelevant domains
+                    generic_domains = [
+                        'linkedin', 'facebook', 'twitter', 'instagram', 'youtube',
+                        'wikipedia', 'reddit', 'medium', 'quora', 'pinterest',
+                        'yelp', 'tripadvisor', 'yellowpages', 'mapquest', 'google',
+                        'hubspot', 'amazonaws', 'cloudfront', 'foursquare', 'booking.com'
+                    ]
+                    
+                    real_competitors = [
+                        c for c in serp_competitors 
+                        if c != domain and not any(generic in c.lower() for generic in generic_domains)
+                    ][:15]
                     
                     if real_competitors:
-                        print(f"✅ Found {len(real_competitors)} real competitors: {', '.join(real_competitors[:3])}...")
-                    
-                    # REPLACE AI competitors with SERP competitors (don't merge - AI often guesses wrong)
-                    # Only use real data from Google search results
-                    competitive_analysis.top_competitors = real_competitors[:15]
-                    
-                    competitive_analysis.serp_insights.extend([
-                        f"PAA: {q}" for q in serp_insights['people_also_ask'][:10]
-                    ])
-                    competitive_analysis.serp_insights.extend([
-                        f"Related: {s}" for s in serp_insights['related_searches'][:5]
-                    ])
-                    
-                    # Add competitor insights
-                    if real_competitors:
+                        print(f"✅ Found {len(real_competitors)} real competitors from SERP: {', '.join(real_competitors[:3])}...")
+                        competitive_analysis.top_competitors = real_competitors
+                        
+                        # Add SERP insights (People Also Ask, Related Searches)
+                        if serp_insights.get('people_also_ask'):
+                            competitive_analysis.serp_insights.extend([
+                                f"PAA: {q}" for q in serp_insights['people_also_ask'][:10]
+                            ])
+                        
+                        if serp_insights.get('related_searches'):
+                            competitive_analysis.serp_insights.extend([
+                                f"Related: {s}" for s in serp_insights['related_searches'][:5]
+                            ])
+                        
+                        # Add competitor insights
                         competitive_analysis.content_approaches.extend([
                             f"Top ranking competitors: {', '.join(real_competitors[:3])}",
                             "Analyze competitor content strategies for these domains"
                         ])
+                    else:
+                        print(f"⚠️ No specific competitors found from SERP, keeping AI suggestions")
+                        # Keep original AI competitors from main analysis
+                    
+                except Exception as e:
+                    print(f"⚠️ Error in hybrid competitor analysis: {str(e)}")
+                    # Keep original AI competitors from main analysis
+                    pass
+
             
-            # Generate expansive content plan (40-50 articles for faster generation)
-            print(f"📝 Generating content plan for {url}...")
-            expanded_articles = await self._generate_expansive_content_plan(
-                content_data, 
-                result.get('content_strategy', {}),
-                result.get('semantic_relationships', {}),
-                content_articles or []
-            )
-            
-            # Combine initial articles with expanded batch
-            all_articles = (content_articles or []) + expanded_articles
-            print(f"✅ Total articles generated: {len(all_articles)}")
+            # Use only the initial articles from AI response (no batch processing for speed)
+            print(f"✅ Generated {len(content_articles or [])} articles from initial analysis")
+
             
             # Create comprehensive TopicalMapData
             return TopicalMapData(
@@ -453,8 +574,10 @@ CRITICAL INSTRUCTIONS:
                 competitive_advantages=result.get('competitive_advantages', [])[:10],
                 technology_stack=result.get('technology_stack', [])[:10],
                 competitive_analysis=competitive_analysis,
-                content_articles=all_articles,  # Now includes 40-50 articles
-                seo_optimization=seo_optimization
+                content_articles=content_articles,  # Initial articles from AI response
+                seo_optimization=seo_optimization,
+                taxonomy=taxonomy,
+                ontology=ontology
             )
             
         except Exception as e:
