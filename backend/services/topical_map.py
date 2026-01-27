@@ -760,7 +760,21 @@ Make titles specific, actionable, and SEO-friendly. Vary the article types and p
                 tasks.append(self.generate_topical_map_with_ai(data))
         
         if tasks:
-            return await asyncio.gather(*tasks)
+            # Use return_exceptions=True to allow partial success
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Filter out exceptions and return only successful results
+            successful_results = []
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    print(f"⚠️ Topical map generation failed for URL {i+1}: {str(result)}")
+                else:
+                    successful_results.append(result)
+            
+            if not successful_results:
+                raise ValueError("All topical map generations failed")
+            
+            return successful_results
         return []
 
 

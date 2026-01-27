@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import Results from './pages/Results';
+import PageSelector from './pages/PageSelector';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -43,6 +44,14 @@ function AppContent() {
                         element={
                             <ProtectedRoute>
                                 <History />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/select-pages"
+                        element={
+                            <ProtectedRoute>
+                                <PageSelector />
                             </ProtectedRoute>
                         }
                     />

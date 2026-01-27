@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -20,10 +20,48 @@ import toast from 'react-hot-toast';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [urls, setUrls] = useState(['']);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [useGSC, setUseGSC] = useState(true);
     const [selectedProperties, setSelectedProperties] = useState([]);
+
+    // Initialize selectedPages from sessionStorage
+    const [selectedPages, setSelectedPages] = useState(() => {
+        const saved = sessionStorage.getItem('selectedPages');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const processedStateRef = useRef(false); // Track if we've processed the current state
+
+    // Persist selectedPages to sessionStorage whenever it changes
+    useEffect(() => {
+        sessionStorage.setItem('selectedPages', JSON.stringify(selectedPages));
+    }, [selectedPages]);
+
+    // Handle incoming state from PageSelector
+    useEffect(() => {
+        if (location.state?.urls && location.state?.mode === 'cluster' && !processedStateRef.current) {
+            processedStateRef.current = true;
+
+            // Add pages to selectedPages array, avoiding duplicates
+            const newPages = location.state.urls;
+            setSelectedPages(prev => {
+                const combined = [...prev, ...newPages];
+                // Remove duplicates
+                return [...new Set(combined)];
+            });
+
+            // Show success message
+            toast.success(`${newPages.length} pages added! You can select more pages or start analysis.`);
+
+            // Clear the state to prevent re-triggering
+            navigate(location.pathname, { replace: true, state: {} });
+        } else if (!location.state?.urls) {
+            // Reset the ref when state is cleared
+            processedStateRef.current = false;
+        }
+    }, [location.state, navigate]);
 
     const addUrlField = () => {
         if (urls.length < 5) {
@@ -43,13 +81,14 @@ const Dashboard = () => {
         setUrls(newUrls);
     };
 
+
     const handleAnalyze = async () => {
         let validUrls = [];
 
         if (useGSC) {
             // Use selected GSC properties
-            if (selectedProperties.length === 0) {
-                toast.error('Please select at least one property');
+            if (selectedProperties.length === 0 && selectedPages.length === 0) {
+                toast.error('Please select at least one property or page');
                 return;
             }
             validUrls = selectedProperties.map(p => p.url);
@@ -57,8 +96,8 @@ const Dashboard = () => {
             // Use manual URL entry
             validUrls = urls.filter(url => url.trim() !== '');
 
-            if (validUrls.length === 0) {
-                toast.error('Please enter at least one URL');
+            if (validUrls.length === 0 && selectedPages.length === 0) {
+                toast.error('Please enter at least one URL or select pages');
                 return;
             }
 
@@ -71,16 +110,30 @@ const Dashboard = () => {
             }
         }
 
+        // Add selected pages to validUrls
+        validUrls = [...validUrls, ...selectedPages];
+
+        // Check total URL limit
+        if (validUrls.length > 5) {
+            toast.error(`Maximum 5 URLs allowed. You have ${validUrls.length} URLs (${selectedProperties.length} properties + ${urls.filter(u => u.trim()).length} manual URLs + ${selectedPages.length} selected pages)`);
+            return;
+        }
+
         setIsAnalyzing(true);
 
         try {
             const token = localStorage.getItem('access_token');
             const response = await axios.post('/api/analyze',
                 { urls: validUrls },
-                { headers: { Authorization: `Bearer ${token}` } }
+                { headers: { Authorization: `Bearer ${token} ` } }
             );
 
             toast.success('Analysis started! Redirecting to results...');
+
+            // Clear selected pages after starting analysis
+            setSelectedPages([]);
+            sessionStorage.removeItem('selectedPages');
+
             navigate(`/results/${response.data.analysis_id}`);
         } catch (error) {
             console.error('Analysis error:', error);
@@ -208,7 +261,7 @@ const Dashboard = () => {
                                                                 value={url}
                                                                 onChange={(e) => updateUrl(index, e.target.value)}
                                                                 placeholder={`https://example${index > 0 ? index + 1 : ''}.com`}
-                                                                leftIcon={<GlobeAltIcon className="w-5 h-5 text-slate-400" />}
+                                                                leftIcon={< GlobeAltIcon className="w-5 h-5 text-slate-400" />}
                                                                 className="pr-12 border-2 focus:border-primary-500 transition-all"
                                                             />
                                                             {url && (
@@ -217,36 +270,98 @@ const Dashboard = () => {
                                                                     <CheckCircleIcon className="w-5 h-5 text-green-500" />
                                                                 </div>
                                                             )}
-                                                        </div>
-                                                        {urls.length > 1 && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="md"
-                                                                onClick={() => removeUrlField(index)}
-                                                                className="hover:bg-red-50 hover:text-red-600 transition-all"
-                                                            >
-                                                                <XMarkIcon className="w-5 h-5" />
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </motion.div>
+                                                        </div >
+                                                        {
+                                                            urls.length > 1 && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="md"
+                                                                    onClick={() => removeUrlField(index)}
+                                                                    className="hover:bg-red-50 hover:text-red-600 transition-all"
+                                                                >
+                                                                    <XMarkIcon className="w-5 h-5" />
+                                                                </Button>
+                                                            )
+                                                        }
+                                                    </div >
+                                                </motion.div >
                                             ))}
-                                        </div>
+                                        </div >
 
                                         {/* Add URL Button */}
-                                        {urls.length < 5 && (
-                                            <Button
-                                                variant="outline"
-                                                onClick={addUrlField}
-                                                className="w-full border-2 border-dashed border-slate-300 hover:border-primary-500 hover:bg-primary-50 transition-all py-4"
-                                            >
-                                                <PlusIcon className="w-5 h-5 mr-2" />
-                                                Add Another Website
-                                            </Button>
-                                        )}
+                                        {
+                                            urls.length < 5 && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={addUrlField}
+                                                    className="w-full border-2 border-dashed border-slate-300 hover:border-primary-500 hover:bg-primary-50 transition-all py-4"
+                                                >
+                                                    <PlusIcon className="w-5 h-5 mr-2" />
+                                                    Add Another Website
+                                                </Button>
+                                            )
+                                        }
 
                                     </>
                                 )}
+
+                                {/* Selected Pages Section */}
+                                {
+                                    selectedPages.length > 0 && (
+                                        <div className="mt-6 p-4 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircleIcon className="w-5 h-5 text-purple-600" />
+                                                    <h3 className="font-bold text-slate-900">Selected Pages for Cluster Analysis</h3>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedPages([]);
+                                                        sessionStorage.removeItem('selectedPages');
+                                                    }}
+                                                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                                                >
+                                                    Clear All
+                                                </button>
+                                            </div>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {selectedPages.map((pageUrl, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200 hover:border-purple-300 transition-all"
+                                                    >
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <span className="text-sm font-bold text-purple-600">{index + 1}</span>
+                                                            </div>
+                                                            <p className="text-sm text-slate-700 truncate">{pageUrl}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setSelectedPages(selectedPages.filter((_, i) => i !== index))}
+                                                            className="ml-2 p-1 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                                                        >
+                                                            <XMarkIcon className="w-5 h-5 text-red-600" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-purple-200">
+                                                <p className="text-sm text-slate-600">
+                                                    <span className="font-bold text-purple-600">{selectedPages.length}</span> page{selectedPages.length !== 1 ? 's' : ''} selected
+                                                </p>
+                                                {(() => {
+                                                    const totalUrls = selectedProperties.length + urls.filter(u => u.trim()).length + selectedPages.length;
+                                                    const isOverLimit = totalUrls > 5;
+                                                    return (
+                                                        <p className={`text-sm font-semibold ${isOverLimit ? 'text-red-600' : 'text-slate-600'}`}>
+                                                            Total: <span className={isOverLimit ? 'text-red-600' : 'text-purple-600'}>{totalUrls}/5</span> URLs
+                                                        </p>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    )
+                                }
 
                                 {/* Analyze Button - Common for both modes */}
                                 <div className="pt-4">
@@ -255,7 +370,7 @@ const Dashboard = () => {
                                         size="lg"
                                         onClick={handleAnalyze}
                                         isLoading={isAnalyzing}
-                                        disabled={isAnalyzing || (useGSC && selectedProperties.length === 0) || (!useGSC && urls.filter(u => u.trim()).length === 0)}
+                                        disabled={isAnalyzing || (useGSC && selectedProperties.length === 0 && selectedPages.length === 0) || (!useGSC && urls.filter(u => u.trim()).length === 0 && selectedPages.length === 0)}
                                         className="w-full bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 hover:from-primary-700 hover:via-purple-700 hover:to-pink-700 shadow-2xl shadow-primary-500/50 text-lg py-6 relative overflow-hidden group"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
@@ -273,12 +388,12 @@ const Dashboard = () => {
                                         )}
                                     </Button>
                                 </div>
-                            </div>
-                        </Card>
-                    </motion.div>
-                </div>
-            </div>
-        </div>
+                            </div >
+                        </Card >
+                    </motion.div >
+                </div >
+            </div >
+        </div >
     );
 };
 

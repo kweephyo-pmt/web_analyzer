@@ -221,18 +221,19 @@ const History = () => {
                                             </div>
 
                                             {/* URLs */}
-                                            <div className="space-y-2 ml-13 pl-1">
+                                            <div className="space-y-2 ml-13 pl-1 max-w-2xl">
                                                 {analysis.urls.map((url, urlIndex) => (
                                                     <div
                                                         key={urlIndex}
-                                                        className="text-sm flex items-center gap-2 group"
+                                                        className="text-sm flex items-start gap-2 group"
                                                     >
-                                                        <div className="w-1.5 h-1.5 bg-primary-400 rounded-full flex-shrink-0"></div>
+                                                        <div className="w-1.5 h-1.5 bg-primary-400 rounded-full flex-shrink-0 mt-1.5"></div>
                                                         <a
                                                             href={url}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="text-primary-600 hover:text-primary-700 hover:underline truncate transition-colors"
+                                                            className="text-primary-600 hover:text-primary-700 hover:underline transition-colors break-all line-clamp-2"
+                                                            title={url}
                                                         >
                                                             {url}
                                                         </a>

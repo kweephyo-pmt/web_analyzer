@@ -159,6 +159,48 @@ async def disconnect_gsc(
         )
 
 
+@router.get("/auth/gsc/pages/{property_url:path}")
+async def get_gsc_pages(
+    property_url: str,
+    days: int = 90,
+    current_user: UserInfo = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all pages from a GSC property with their ranking queries
+    Used for cluster analysis and page selection
+    """
+    from services.gsc_service import GSCService
+    from utils.user_manager import get_user_gsc_token
+    from urllib.parse import unquote
+    
+    # Decode the URL-encoded property URL
+    property_url = unquote(property_url)
+    
+    # Get token from database
+    gsc_token = get_user_gsc_token(db, current_user.email)
+    
+    if not gsc_token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="GSC not connected. Please connect your Google Search Console account first."
+        )
+    
+    try:
+        service = GSCService(gsc_token)
+        pages = await service.get_pages_with_queries(property_url, days)
+        return {
+            "property_url": property_url,
+            "pages": pages,
+            "total_pages": len(pages)
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch pages: {str(e)}"
+        )
+
+
 # ============= Analysis Routes =============
 
 async def process_analysis(analysis_id: str, urls: List[str]):

@@ -49,7 +49,7 @@ class AIService:
             print(f"Groq API error: {error_msg}")
             raise
     
-    async def analyze_with_deepseek(self, prompt: str, system_prompt: str = None, max_tokens: int = 8192) -> str:
+    async def analyze_with_deepseek(self, prompt: str, system_prompt: str = None, max_tokens: int = 16000) -> str:
         """Analyze content using DeepSeek (good for complex analysis)"""
         if not self.deepseek_client:
             raise ValueError("DeepSeek API key not configured")
@@ -64,7 +64,7 @@ class AIService:
                 model="deepseek-chat",  # Main model
                 messages=messages,
                 temperature=0.7,
-                max_tokens=max_tokens  # DeepSeek's max is 8192
+                max_tokens=max_tokens  # Increased to 16000 for longer responses
             )
             return response.choices[0].message.content
         except Exception as e:

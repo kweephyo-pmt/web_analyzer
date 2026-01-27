@@ -67,6 +67,10 @@ export const AuthProvider = ({ children }) => {
         } finally {
             // Clear all user-related data from localStorage
             localStorage.removeItem('access_token');
+
+            // Clear sessionStorage (selected pages, etc.)
+            sessionStorage.removeItem('selectedPages');
+
             setUser(null);
         }
     };

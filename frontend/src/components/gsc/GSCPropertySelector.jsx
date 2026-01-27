@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
@@ -8,12 +9,14 @@ import {
     XCircleIcon,
     ArrowPathIcon,
     LinkIcon,
-    ShieldCheckIcon
+    ShieldCheckIcon,
+    DocumentMagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
+    const navigate = useNavigate();
     const [isConnected, setIsConnected] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
@@ -218,6 +221,11 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
         }
     };
 
+    const handleSelectPages = (property, e) => {
+        e.stopPropagation();
+        navigate(`/select-pages?property=${encodeURIComponent(property.url)}`);
+    };
+
     const filteredProperties = properties.filter(prop =>
         prop.url.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -343,10 +351,10 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                                             }
                                         `}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 flex-1">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
                                                 <div className={`
-                                                    w-10 h-10 rounded-lg flex items-center justify-center
+                                                    w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
                                                     ${isSelected
                                                         ? 'bg-primary-500'
                                                         : 'bg-slate-200'
@@ -369,7 +377,7 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                                                                 navigator.clipboard.writeText(property.url);
                                                                 toast.success('URL copied to clipboard!');
                                                             }}
-                                                            className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                                            className="p-1 hover:bg-slate-200 rounded transition-colors flex-shrink-0"
                                                             title="Copy URL"
                                                         >
                                                             <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -382,6 +390,15 @@ const GSCPropertySelector = ({ onPropertySelect, selectedProperties = [] }) => {
                                                     </p>
                                                 </div>
                                             </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={(e) => handleSelectPages(property, e)}
+                                                className="flex-shrink-0"
+                                            >
+                                                <DocumentMagnifyingGlassIcon className="w-4 h-4 mr-1" />
+                                                Select Pages
+                                            </Button>
                                         </div>
                                     </div>
                                 );

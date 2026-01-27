@@ -80,6 +80,91 @@ class GSCService:
         except Exception as e:
             logger.error(f"Unexpected error verifying property: {str(e)}")
             return False
+    
+    async def get_pages_with_queries(self, property_url: str, days: int = 90) -> List[Dict]:
+        """
+        Fetch all pages from a property with their ranking queries
+        
+        Args:
+            property_url: The URL of the GSC property
+            days: Number of days to look back (default 90)
+            
+        Returns:
+            List of pages with their queries, clicks, impressions, position
+        """
+        try:
+            from datetime import datetime, timedelta
+            
+            # Calculate date range
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days)
+            
+            # Request data grouped by page and query
+            request = {
+                'startDate': start_date.strftime('%Y-%m-%d'),
+                'endDate': end_date.strftime('%Y-%m-%d'),
+                'dimensions': ['page', 'query'],
+                'rowLimit': 25000,  # Maximum allowed
+                'startRow': 0
+            }
+            
+            response = self.service.searchanalytics().query(
+                siteUrl=property_url,
+                body=request
+            ).execute()
+            
+            # Group queries by page
+            pages_data = {}
+            rows = response.get('rows', [])
+            
+            for row in rows:
+                page = row['keys'][0]
+                query = row['keys'][1]
+                clicks = row.get('clicks', 0)
+                impressions = row.get('impressions', 0)
+                position = row.get('position', 0)
+                ctr = row.get('ctr', 0)
+                
+                if page not in pages_data:
+                    pages_data[page] = {
+                        'url': page,
+                        'total_clicks': 0,
+                        'total_impressions': 0,
+                        'avg_position': 0,
+                        'queries': []
+                    }
+                
+                pages_data[page]['total_clicks'] += clicks
+                pages_data[page]['total_impressions'] += impressions
+                pages_data[page]['queries'].append({
+                    'query': query,
+                    'clicks': clicks,
+                    'impressions': impressions,
+                    'position': round(position, 1),
+                    'ctr': round(ctr * 100, 2)
+                })
+            
+            # Calculate average position for each page
+            for page_url, data in pages_data.items():
+                if data['queries']:
+                    total_position = sum(q['position'] for q in data['queries'])
+                    data['avg_position'] = round(total_position / len(data['queries']), 1)
+                    # Sort queries by clicks (descending)
+                    data['queries'].sort(key=lambda x: x['clicks'], reverse=True)
+            
+            # Convert to list and sort by total clicks
+            pages_list = list(pages_data.values())
+            pages_list.sort(key=lambda x: x['total_clicks'], reverse=True)
+            
+            logger.info(f"Fetched {len(pages_list)} pages with queries from {property_url}")
+            return pages_list
+            
+        except HttpError as e:
+            logger.error(f"HTTP Error {e.resp.status} fetching pages: {str(e)}")
+            raise Exception(f"Failed to fetch pages from Search Console: HTTP {e.resp.status}")
+        except Exception as e:
+            logger.error(f"Unexpected error fetching pages: {str(e)}")
+            raise Exception(f"Failed to fetch pages: {str(e)}")
 
 
 async def get_user_properties(access_token: str) -> List[Dict[str, str]]:
