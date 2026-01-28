@@ -62,7 +62,7 @@ class SitemapService:
         try:
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.get(sitemap_url)
-                
+                    
                 if response.status_code != 200:
                     return []
                 
