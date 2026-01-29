@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi.responses import StreamingResponse
 from typing import List
 from sqlalchemy.orm import Session
 from models.schemas import (
@@ -9,8 +10,11 @@ from models.schemas import (
 from auth.auth import verify_google_token, create_access_token, get_current_user
 from services import scraper, kg_generator, topical_generator, comparator
 from utils.storage import database_store
+from utils.progress_tracker import progress_tracker
 from database import get_db
 from datetime import datetime
+import asyncio
+import json
 
 router = APIRouter()
 
@@ -203,33 +207,117 @@ async def get_gsc_pages(
 
 # ============= Analysis Routes =============
 
+@router.get("/api/progress/{analysis_id}")
+async def stream_progress(
+    analysis_id: str,
+    request: Request,
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Stream real-time progress updates using Server-Sent Events (SSE)"""
+    # Verify token (EventSource doesn't support custom headers)
+    from auth.auth import verify_token
+    try:
+        payload = verify_token(token)
+        user_email = payload.get("sub")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    
+    async def event_generator():
+        """Generate SSE events with progress updates"""
+        try:
+            # Send initial connection message
+            yield f"data: {json.dumps({'status': 'connected', 'message': 'Progress stream connected'})}\n\n"
+            
+            last_update = None
+            while True:
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    print(f"[{analysis_id}] Client disconnected from progress stream")
+                    break
+                
+                # Get current progress
+                progress = await progress_tracker.get(analysis_id)
+                
+                if progress:
+                    # Only send update if progress changed
+                    if progress != last_update:
+                        yield f"data: {json.dumps(progress)}\n\n"
+                        last_update = progress.copy()
+                    
+                    # If complete or failed, send final message and close
+                    if progress['status'] in ['complete', 'failed']:
+                        await asyncio.sleep(0.5)  # Give client time to process
+                        break
+                else:
+                    # No progress data yet, send waiting message
+                    yield f"data: {json.dumps({'status': 'waiting', 'message': 'Waiting for analysis to start...'})}\n\n"
+                
+                # Wait before next check (adjust polling interval as needed)
+                await asyncio.sleep(0.5)
+                
+        except asyncio.CancelledError:
+            print(f"[{analysis_id}] Progress stream cancelled")
+        except Exception as e:
+            print(f"[{analysis_id}] Error in progress stream: {str(e)}")
+            yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+        finally:
+            # Cleanup progress data after stream ends
+            await asyncio.sleep(5)  # Keep data for a bit in case of reconnection
+            await progress_tracker.cleanup(analysis_id)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
+
+
 async def process_analysis(analysis_id: str, urls: List[str]):
     """Background task to process analysis with AI"""
     from database import SessionLocal
     db = SessionLocal()
     
     try:
+        # Initialize progress tracking (5 main steps)
+        await progress_tracker.create(analysis_id, total_steps=5)
+        
         print(f"[{analysis_id}] Starting analysis for {len(urls)} URLs...")
+        await progress_tracker.update(analysis_id, 1, 'scraping', f'Scraping {len(urls)} website(s)...')
         
         # Scrape URLs
         print(f"[{analysis_id}] Scraping URLs...")
         scraped_data = await scraper.scrape_multiple(urls)
         
         # Generate knowledge graph with AI
+        await progress_tracker.update(analysis_id, 2, 'knowledge_graph', 'Generating knowledge graph with AI...')
         print(f"[{analysis_id}] Generating knowledge graph with AI...")
         knowledge_graph = await kg_generator.generate_graph(scraped_data)
         
         # Generate topical maps with AI
+        await progress_tracker.update(analysis_id, 3, 'topical_map', 'Creating topical maps and content strategy...')
         print(f"[{analysis_id}] Generating topical maps with AI...")
         topical_maps = await topical_generator.generate_multiple(scraped_data)
         
         # Generate comparison with AI (if multiple URLs)
         comparison = None
         if len(urls) >= 2:
+            await progress_tracker.update(analysis_id, 4, 'comparison', 'Comparing websites...')
             print(f"[{analysis_id}] Generating comparison with AI...")
             comparison = await comparator.compare_websites(scraped_data, topical_maps)
+        else:
+            # Skip comparison step if single URL
+            await progress_tracker.update(analysis_id, 4, 'comparison', 'Skipping comparison (single URL)...')
         
         # Update storage - convert Pydantic models to dicts
+        await progress_tracker.update(analysis_id, 5, 'finalizing', 'Saving results...')
         print(f"[{analysis_id}] Analysis complete! Storing results...")
         
         # Convert Pydantic models to dictionaries for JSON serialization
@@ -249,12 +337,19 @@ async def process_analysis(analysis_id: str, urls: List[str]):
             'topical_maps': serialize_data(topical_maps),
             'comparison': serialize_data(comparison) if comparison else None,
         })
+        
+        # Mark as complete
+        await progress_tracker.complete(analysis_id, 'Analysis complete! Redirecting to results...')
         print(f"[{analysis_id}] ✅ Successfully completed!")
         
     except Exception as e:
         print(f"[{analysis_id}] ❌ Error processing analysis: {str(e)}")
         import traceback
         traceback.print_exc()
+        
+        # Update progress tracker with error
+        await progress_tracker.fail(analysis_id, str(e))
+        
         try:
             db.rollback()  # Rollback failed transaction
             database_store.update_analysis(db, analysis_id, {

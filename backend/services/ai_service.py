@@ -60,14 +60,14 @@ class AIService:
         messages.append({"role": "user", "content": prompt})
         
         try:
-            # Ensure max_tokens doesn't exceed DeepSeek's limit of 8192
+            # DeepSeek limit is 8192 tokens, use 8000 for safety
             safe_max_tokens = min(max_tokens, 8000)
             
             response = await self.deepseek_client.chat.completions.create(
                 model="deepseek-chat",  # Main model
                 messages=messages,
                 temperature=0.7,
-                max_tokens=safe_max_tokens  # DeepSeek limit is 8192, using 8000 for safety
+                max_tokens=safe_max_tokens
             )
             return response.choices[0].message.content
         except Exception as e:

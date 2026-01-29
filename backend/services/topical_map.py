@@ -444,7 +444,82 @@ CRITICAL INSTRUCTIONS:
             
             # Use DeepSeek for all analysis (high quality, no rate limits, ~10-15 min per URL)
             print(f"🤖 Generating topical analysis for {url}...")
-            result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
+            
+            try:
+                result = await ai_service.extract_json(prompt, system_prompt, use_deepseek=True)
+            except ValueError as e:
+                # If JSON parsing fails, try with a simplified prompt
+                error_msg = str(e)
+                if "Could not extract valid JSON" in error_msg:
+                    print(f"⚠️ Comprehensive analysis failed, retrying with simplified prompt...")
+                    
+                    # Simplified prompt with fewer requirements
+                    simplified_prompt = f"""Analyze this website and return a simplified topical map.
+
+Website Data:
+{json.dumps(content_data, indent=2)}
+
+Return ONLY valid JSON with this structure (no markdown, no code blocks):
+{{
+  "business_description": "200-300 word description",
+  "central_entity": "{central_entity}",
+  "business_model": "B2B/B2C/SaaS/etc",
+  "search_intent": ["Intent 1", "Intent 2", "Intent 3"],
+  "target_audiences": ["Audience 1", "Audience 2"],
+  "conversion_methods": ["Method 1", "Method 2"],
+  "key_topics": ["Topic 1", "Topic 2", "Topic 3"],
+  "semantic_relationships": {{
+    "core_entities": ["Entity 1", "Entity 2"],
+    "attributes": ["Attr 1", "Attr 2"],
+    "related_concepts": ["Concept 1", "Concept 2"]
+  }},
+  "content_articles": [
+    {{
+      "title": "Article Title",
+      "section": "Core",
+      "article_type": "informative",
+      "category_l1": "Main Category",
+      "category_l2": "Subcategory",
+      "category_l3": "Sub-subcategory",
+      "priority": 1,
+      "source_context": "Brief description"
+    }}
+  ],
+  "taxonomy": [
+    {{
+      "name": "Main Category",
+      "level": 1,
+      "parent": null,
+      "children": ["Subcategory 1"],
+      "color": "#4F46E5"
+    }},
+    {{
+      "name": "Subcategory 1",
+      "level": 2,
+      "parent": "Main Category",
+      "children": ["Topic 1"],
+      "color": "#10B981"
+    }},
+    {{
+      "name": "Topic 1",
+      "level": 3,
+      "parent": "Subcategory 1",
+      "children": [],
+      "color": "#F59E0B"
+    }}
+  ]
+}}
+
+CRITICAL: Return ONLY the JSON object. No explanations, no markdown formatting."""
+                    
+                    result = await ai_service.extract_json(
+                        simplified_prompt,
+                        "You are a business analyst. Return ONLY valid JSON without markdown formatting.",
+                        use_deepseek=True
+                    )
+                    print(f"✅ Simplified analysis succeeded")
+                else:
+                    raise
             
             # Parse semantic relationships
             semantic_rel = None

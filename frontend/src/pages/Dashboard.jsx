@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import ProgressModal from '../components/ui/ProgressModal';
 import GSCPropertySelector from '../components/gsc/GSCPropertySelector';
 import {
     PlusIcon,
@@ -18,13 +19,16 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+
 const Dashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [urls, setUrls] = useState(['']);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisId, setAnalysisId] = useState(null);
     const [useGSC, setUseGSC] = useState(true);
     const [selectedProperties, setSelectedProperties] = useState([]);
+
 
     // Initialize selectedPages from sessionStorage
     const [selectedPages, setSelectedPages] = useState(() => {
@@ -128,23 +132,45 @@ const Dashboard = () => {
                 { headers: { Authorization: `Bearer ${token} ` } }
             );
 
-            toast.success('Analysis started! Redirecting to results...');
+            // Set analysis ID to trigger progress modal
+            setAnalysisId(response.data.analysis_id);
 
             // Clear selected pages after starting analysis
             setSelectedPages([]);
             sessionStorage.removeItem('selectedPages');
 
-            navigate(`/results/${response.data.analysis_id}`);
         } catch (error) {
             console.error('Analysis error:', error);
             toast.error(error.response?.data?.detail || 'Analysis failed');
-        } finally {
             setIsAnalyzing(false);
         }
     };
 
+    const handleProgressComplete = () => {
+        // Navigate to results when analysis completes
+        if (analysisId) {
+            navigate(`/results/${analysisId}`);
+        }
+    };
+
+    const handleProgressError = (error) => {
+        toast.error(error || 'Analysis failed');
+        setIsAnalyzing(false);
+        setAnalysisId(null);
+    };
+
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 relative overflow-hidden">
+            {/* Progress Modal */}
+            {analysisId && (
+                <ProgressModal
+                    analysisId={analysisId}
+                    onComplete={handleProgressComplete}
+                    onError={handleProgressError}
+                />
+            )}
+
             {/* Animated background elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-20 left-10 w-72 h-72 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
