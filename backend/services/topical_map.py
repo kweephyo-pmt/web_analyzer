@@ -237,14 +237,36 @@ Document:
 • Competitive Advantages (5-8): Key differentiators
 • Technology Stack (6-10): Technologies/tools/platforms used
 
-PART 9: TAXONOMY STRUCTURE
+PART 9: TAXONOMY STRUCTURE (Content Hierarchy)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Create a hierarchical taxonomy (10-20 nodes):
-• Level 1 (L1): Main categories (3-5 categories) - use color #4F46E5
-• Level 2 (L2): Subcategories under each L1 (2-4 per L1) - use color #10B981
-• Level 3 (L3): Sub-subcategories under each L2 (2-3 per L2) - use color #F59E0B
-• Each node should have: name, level, parent, children array, color
-• Build from content_articles categories to ensure consistency
+Create a hierarchical content taxonomy following this tree structure:
+
+Central Topic (Business/Service Name)
+├── Level 1: Major Category A
+│   ├── Level 2: Subcategory A1
+│   │   ├── Level 3: Topic A1a
+│   │   └── Level 3: Topic A1b
+│   └── Level 2: Subcategory A2
+│       ├── Level 3: Topic A2a
+│       └── Level 3: Topic A2b
+├── Level 1: Major Category B
+│   ├── Level 2: Subcategory B1
+│   └── Level 2: Subcategory B2
+└── Level 1: Major Category C
+
+Requirements:
+• Create 3-5 Level 1 categories (main content pillars) - color: #4F46E5 (indigo)
+• Each L1 MUST have 2-4 Level 2 subcategories - color: #10B981 (green)
+• Each L2 MUST have 2-3 Level 3 sub-subcategories - color: #F59E0B (amber)
+• CRITICAL: EVERY Level 1 node MUST have at least 2 children (Level 2 nodes)
+• CRITICAL: EVERY Level 2 node MUST have at least 2 children (Level 3 nodes)
+• NO empty children arrays for L1 or L2 nodes - all must be fully populated
+• Total nodes: 15-25 nodes for comprehensive coverage
+• Each node must have: name, level, parent (null for L1), children array, color
+• Build taxonomy from content_articles categories to ensure consistency
+• Names should be clear, specific, and SEO-friendly (not generic)
+
+
 
 PART 10: ONTOLOGY RELATIONSHIPS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -361,6 +383,34 @@ Return comprehensive JSON with this EXACT structure:
       "parent": "Main Category Name",
       "children": ["Sub-sub 1", "Sub-sub 2"],
       "color": "#10B981"
+    }},
+    {{
+      "name": "Sub-sub 1",
+      "level": 3,
+      "parent": "Subcategory 1",
+      "children": [],
+      "color": "#F59E0B"
+    }},
+    {{
+      "name": "Sub-sub 2",
+      "level": 3,
+      "parent": "Subcategory 1",
+      "children": [],
+      "color": "#F59E0B"
+    }},
+    {{
+      "name": "Subcategory 2",
+      "level": 2,
+      "parent": "Main Category Name",
+      "children": ["Sub-sub 3"],
+      "color": "#10B981"
+    }},
+    {{
+      "name": "Sub-sub 3",
+      "level": 3,
+      "parent": "Subcategory 2",
+      "children": [],
+      "color": "#F59E0B"
     }}
   ],
   
@@ -443,6 +493,35 @@ CRITICAL INSTRUCTIONS:
             if 'taxonomy' in result and result['taxonomy']:
                 from models.schemas import TaxonomyNode
                 taxonomy = [TaxonomyNode(**node) for node in result['taxonomy']]
+                
+                # Validate taxonomy: Remove L1/L2 nodes with empty children
+                if taxonomy:
+                    validated_taxonomy = []
+                    nodes_to_remove = set()
+                    
+                    # First pass: identify L1 and L2 nodes with no children
+                    for node in taxonomy:
+                        if node.level in [1, 2] and (not node.children or len(node.children) == 0):
+                            nodes_to_remove.add(node.name)
+                            print(f"⚠️  Removing empty taxonomy node: {node.name} (Level {node.level})")
+                    
+                    # Second pass: remove nodes and update parent references
+                    for node in taxonomy:
+                        # Skip nodes marked for removal
+                        if node.name in nodes_to_remove:
+                            continue
+                        
+                        # Remove references to deleted nodes from children arrays
+                        if node.children:
+                            node.children = [child for child in node.children if child not in nodes_to_remove]
+                        
+                        # Only keep nodes that aren't marked for removal
+                        validated_taxonomy.append(node)
+                    
+                    taxonomy = validated_taxonomy if validated_taxonomy else None
+                    
+                    if taxonomy:
+                        print(f"✅ Validated taxonomy: {len(taxonomy)} nodes (removed {len(nodes_to_remove)} empty branches)")
             
             # Parse ontology (Part 10)
             ontology = None
