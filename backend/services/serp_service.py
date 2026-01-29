@@ -40,7 +40,7 @@ class SerpService:
                 return country
         
         # Default to US for .com, .net, .org, etc.
-        return 'us'
+        return 'th'
     
     async def get_serp_insights(self, keywords: List[str], domain: str = None) -> Dict:
         """
@@ -52,7 +52,7 @@ class SerpService:
             return self._empty_insights()
         
         # Detect location from domain
-        location = self._detect_location_from_domain(domain) if domain else 'us'
+        location = self._detect_location_from_domain(domain) if domain else 'th'
         print(f"🔍 Fetching SERP data for {len(keywords[:3])} keywords (location: {location.upper()})...")
         
         # Limit to 3 keywords to conserve API credits
@@ -96,7 +96,7 @@ class SerpService:
         
         return insights
     
-    async def _fetch_keyword_data(self, keyword: str, location: str = 'us') -> Dict:
+    async def _fetch_keyword_data(self, keyword: str, location: str = 'th') -> Dict:
         """Fetch SERP data for a single keyword"""
         try:
             # Run in thread pool to avoid blocking
@@ -115,7 +115,7 @@ class SerpService:
     def _search_google(self, keyword: str, location: str = None) -> Dict:
         """Synchronous Google search via SerpAPI"""
         # Auto-detect location if not provided (defaults to global)
-        country_code = location if location else "us"
+        country_code = location if location else "th"
         
         params = {
             "q": keyword,

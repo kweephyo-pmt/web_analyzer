@@ -60,7 +60,12 @@ class SitemapService:
     async def _parse_sitemap(self, sitemap_url: str) -> List[str]:
         """Parse a sitemap XML file"""
         try:
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+            # Disable SSL verification to handle sites with certificate issues
+            async with httpx.AsyncClient(
+                timeout=self.timeout, 
+                follow_redirects=True,
+                verify=False  # Bypass SSL verification
+            ) as client:
                 response = await client.get(sitemap_url)
                     
                 if response.status_code != 200:
@@ -100,7 +105,8 @@ class SitemapService:
             logger.warning(f"Timeout fetching sitemap {sitemap_url}")
             return []
         except Exception as e:
-            logger.warning(f"Error fetching sitemap {sitemap_url}: {str(e)}")
+            # Silently handle SSL errors and other issues
+            print(f"Error fetching sitemap {sitemap_url}: {str(e)}")
             return []
     
     async def get_priority_pages(self, base_url: str, max_pages: int = 15) -> List[str]:

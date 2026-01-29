@@ -120,69 +120,94 @@ Keep names concise (under 40 characters). Prioritize the most important and freq
         from .scraper import scraper
         import asyncio
         
-        # Process each domain separately
-        for idx, data in enumerate(scraped_data):
+        # Group URLs by domain first to avoid duplicates
+        domain_groups = {}
+        for data in scraped_data:
             if data.get('status') != 'success':
-                domain = urlparse(data['url']).netloc.replace('www.', '')
-                error_msg = data.get('error', 'Unknown error')
-                print(f"  ⚠️  Skipping {domain}: {error_msg}")
                 continue
             
-            # Extract domain
             parsed = urlparse(data['url'])
             domain = parsed.netloc.replace('www.', '')
-            url = data['url']
             
+            if domain not in domain_groups:
+                domain_groups[domain] = []
+            domain_groups[domain].append(data)
+        
+        print(f"  📊 Found {len(domain_groups)} unique domain(s)")
+        
+        # Process each unique domain
+        for idx, (domain, domain_data_list) in enumerate(domain_groups.items()):
             # Assign color to this domain
             domain_color = self.domain_colors[idx % len(self.domain_colors)]
             
-            print(f"  📊 Processing {domain}...")
+            print(f"  📊 Processing {domain} ({len(domain_data_list)} URL(s))...")
             
-            # Fetch sitemap and scrape additional pages
-            print(f"     → Fetching sitemap...")
-            sitemap_urls = await sitemap_service.get_priority_pages(url, max_pages=5)
-            print(f"     → Found {len(sitemap_urls)} priority pages")
+            # Combine all entities from all URLs in this domain
+            all_entities = {
+                'services': [],
+                'products': [],
+                'technologies': [],
+                'audiences': [],
+                'topics': []
+            }
             
-            # Scrape additional pages (excluding main page)
-            async def scrape_page(sitemap_url):
-                if sitemap_url == url:  # Skip the main page
-                    return None
-                try:
-                    page_data = await scraper.scrape_url(sitemap_url)
-                    if page_data.get('status') == 'success':
-                        return {
-                            'url': sitemap_url,
-                            'title': page_data.get('title', ''),
-                            'headings': page_data.get('headings', {})
-                        }
-                except Exception as e:
-                    print(f"     → Skipped {sitemap_url}: {str(e)}")
-                return None
+            # Process each URL from this domain
+            for data in domain_data_list:
+                url = data['url']
+                
+                # Fetch sitemap and scrape additional pages (only for first URL to avoid duplication)
+                additional_pages = []
+                if domain_data_list.index(data) == 0:  # Only for first URL
+                    print(f"     → Fetching sitemap...")
+                    sitemap_urls = await sitemap_service.get_priority_pages(url, max_pages=5)
+                    print(f"     → Found {len(sitemap_urls)} priority pages")
+                    
+                    # Scrape additional pages (excluding main page)
+                    async def scrape_page(sitemap_url):
+                        if sitemap_url == url:  # Skip the main page
+                            return None
+                        try:
+                            page_data = await scraper.scrape_url(sitemap_url)
+                            if page_data.get('status') == 'success':
+                                return {
+                                    'url': sitemap_url,
+                                    'title': page_data.get('title', ''),
+                                    'headings': page_data.get('headings', {})
+                                }
+                        except Exception as e:
+                            print(f"     → Skipped {sitemap_url}: {str(e)}")
+                        return None
+                    
+                    # Scrape up to 3 additional pages in parallel
+                    tasks = [scrape_page(sitemap_url) for sitemap_url in sitemap_urls[:4]]
+                    results = await asyncio.gather(*tasks)
+                    additional_pages = [page for page in results if page is not None]
+                    
+                    print(f"     → Scraped {len(additional_pages)} additional pages")
+                
+                # Extract entities using AI
+                print(f"     → Extracting entities from {url.split('/')[-1] or 'homepage'}...")
+                entities = await self.extract_entities_for_domain(domain, data, additional_pages)
+                
+                # Merge entities (avoid duplicates)
+                for entity_type, entity_list in entities.items():
+                    for entity in entity_list:
+                        if entity and entity not in all_entities[entity_type]:
+                            all_entities[entity_type].append(entity)
             
-            # Scrape up to 3 additional pages in parallel
-            tasks = [scrape_page(sitemap_url) for sitemap_url in sitemap_urls[:4]]
-            results = await asyncio.gather(*tasks)
-            additional_pages = [page for page in results if page is not None]
-            
-            print(f"     → Scraped {len(additional_pages)} additional pages")
-            
-            # Extract entities using AI with multi-page data
-            print(f"     → Extracting entities with AI...")
-            entities = await self.extract_entities_for_domain(domain, data, additional_pages)
-            
-            # Create domain node (center of cluster)
+            # Create single domain node for this domain
             domain_id = f"domain_{domain}"
             nodes.append(Node(
                 id=domain_id,
                 label=domain,
                 type='domain',
                 color=domain_color,
-                size=80  # Very large domain nodes like reference
+                size=80  # Very large domain nodes
             ))
             node_ids.add(domain_id)
             
             # Add entity nodes and connect to domain
-            for entity_type, entity_list in entities.items():
+            for entity_type, entity_list in all_entities.items():
                 for entity in entity_list:
                     if not entity:
                         continue
@@ -210,10 +235,10 @@ Keep names concise (under 40 characters). Prioritize the most important and freq
             
             # Create some intelligent connections within the domain
             # Connect services to products
-            for service in entities.get('services', [])[:3]:
+            for service in all_entities.get('services', [])[:3]:
                 service_id = f"{domain}_services_{service}"
                 if service_id in node_ids:
-                    for product in entities.get('products', [])[:2]:
+                    for product in all_entities.get('products', [])[:2]:
                         product_id = f"{domain}_products_{product}"
                         if product_id in node_ids:
                             links.append(Link(
@@ -224,10 +249,10 @@ Keep names concise (under 40 characters). Prioritize the most important and freq
                             ))
             
             # Connect technologies to services
-            for tech in entities.get('technologies', [])[:3]:
+            for tech in all_entities.get('technologies', [])[:3]:
                 tech_id = f"{domain}_technologies_{tech}"
                 if tech_id in node_ids:
-                    for service in entities.get('services', [])[:2]:
+                    for service in all_entities.get('services', [])[:2]:
                         service_id = f"{domain}_services_{service}"
                         if service_id in node_ids:
                             links.append(Link(
@@ -240,7 +265,7 @@ Keep names concise (under 40 characters). Prioritize the most important and freq
         print(f"✅ Knowledge graph complete!")
         print(f"   - {len(nodes)} nodes")
         print(f"   - {len(links)} relationships")
-        print(f"   - {len([n for n in nodes if n.type == 'domain'])} domain clusters")
+        print(f"   - {len([n for n in nodes if n.type == 'domain'])} domain cluster(s)")
         
         return KnowledgeGraphData(nodes=nodes, links=links)
 
