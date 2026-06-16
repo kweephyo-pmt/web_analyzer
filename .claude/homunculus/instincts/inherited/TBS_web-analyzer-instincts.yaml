@@ -1,0 +1,327 @@
+# Instincts generated from https://github.com/kweephyo-pmt/TBS_web-analyzer
+# Generated: 2026-06-16T08:33:30.473Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: TBS_web-analyzer-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Commit Length
+
+## Action
+
+Keep commit messages concise (~35 characters)
+
+## Evidence
+
+- Average commit message length: 35 chars
+- Based on 3 commits
+
+---
+id: TBS_web-analyzer-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: TBS_web-analyzer-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: TBS_web-analyzer-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: TBS_web-analyzer-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: TBS_web-analyzer-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: TBS_web-analyzer-workflow-add-new-feature-with-backend-and-frontend-integration
+trigger: "when doing add new feature with backend and frontend integration"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/kweephyo-pmt/TBS_web-analyzer
+---
+
+# TBS_web Analyzer Workflow Add New Feature With Backend And Frontend Integration
+
+## Action
+
+Follow the add-new-feature-with-backend-and-frontend-integration workflow:
+1. Create or update backend service(s) to handle new data or logic
+2. Update or add backend API route(s) to expose new functionality
+3. Modify backend config or requirements if needed
+4. Add or update frontend page(s) for the new feature
+5. Update frontend components (e.g., summaries, tables, selectors) to display new data
+6. Update Sidebar or navigation to link to new feature
+7. Update App.jsx to register new routes/pages
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: backend/api/routes.py, backend/services/*.py, backend/config.py
+
+---
+id: tbs_web-analyzer-instinct-file-naming
+trigger: "When creating a new file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct File Naming
+
+## Action
+
+Name the file using snake_case
+
+## Evidence
+
+- Pattern in namingConventions.files
+
+---
+id: tbs_web-analyzer-instinct-function-naming
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Function Naming
+
+## Action
+
+Use camelCase for the function name
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: tbs_web-analyzer-instinct-class-naming
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Class Naming
+
+## Action
+
+Use PascalCase for the class name
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: tbs_web-analyzer-instinct-constant-naming
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for the constant name
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: tbs_web-analyzer-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in importStyle
+
+---
+id: tbs_web-analyzer-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle
+
+---
+id: tbs_web-analyzer-instinct-test-location
+trigger: "When adding tests for new code"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Test Location
+
+## Action
+
+Place test files in a separate test directory, not alongside source files
+
+## Evidence
+
+- Pattern in architecture.testLocation
+
+---
+id: tbs_web-analyzer-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Commit Format
+
+## Action
+
+Write a concise, freeform message describing the change (no enforced prefix or format)
+
+## Evidence
+
+- Pattern in commits.type
+- Examples: 'Add GSC insight tools, GA4 & SE Ranking integrations'
+
+---
+id: tbs_web-analyzer-instinct-feature-workflow
+trigger: "When adding a new analytics tool, report, or major feature that spans backend and frontend"
+confidence: 0.92
+domain: workflow
+source: repo-analysis
+source_repo: kweephyo-pmt/TBS_web-analyzer
+---
+
+# Tbs_web Analyzer Instinct Feature Workflow
+
+## Action
+
+Follow the workflow: 1) Update backend service(s), 2) Update/add backend API route(s), 3) Modify backend config/requirements if needed, 4) Add/update frontend page(s), 5) Update frontend components, 6) Update Sidebar/navigation, 7) Update App.jsx to register new routes/pages
+
+## Evidence
+
+- Workflow: add-new-feature-with-backend-and-frontend-integration
+- Example commit sequence
+
